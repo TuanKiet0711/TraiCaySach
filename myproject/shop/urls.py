@@ -1,22 +1,23 @@
 from django.urls import path
-from . import views
-from django.shortcuts import render
-from .database import san_pham
+
+# Site views (trang HTML)
+from .views import sanpham as views
+
+# API views (Danh mục – JSON)
+from .views import danhmuc_view as dm_api
+
+app_name = "shop"  # tuỳ chọn
 
 urlpatterns = [
+    # ====== SITE (HTML) ======
     path("", views.home, name="home"),
-    path("category/<str:cat_id>/", views.product_by_category, name="category"),
     path("search/", views.search, name="search"),
-]
 
-def search(request):
-    query = request.GET.get("q", "")
-    results = []
-    if query:
-        results = list(san_pham.find({"ten_san_pham": {"$regex": query, "$options": "i"}}))
-        for sp in results:
-            sp["id"] = str(sp["_id"])
-    return render(request, "shop/search.html", {
-        "query": query,
-        "results": results
-    })
+    # ====== API (JSON) – DANH MỤC ======
+    # GET:   /shop/api/categories/
+    path("api/categories/", dm_api.categories_list, name="api_categories_list"),
+    # POST:  /shop/api/categories/create/
+    path("api/categories/create/", dm_api.categories_create, name="api_categories_create"),
+    # GET/PUT/DELETE: /shop/api/categories/<id>/
+    path("api/categories/<str:id>/", dm_api.category_detail, name="api_category_detail"),
+]
