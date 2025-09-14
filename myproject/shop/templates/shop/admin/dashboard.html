@@ -1,0 +1,100 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Bảng điều khiển · Admin{% endblock %}
+{% block page_title %}Bảng điều khiển{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Sản phẩm -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-link shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-basket fs-4 text-primary me-2"></i>
+          <h5 class="mb-0">Sản phẩm</h5>
+        </div>
+        <p class="text-muted mb-3">Quản lý danh sách sản phẩm & tồn kho.</p>
+        <a href="{% url 'shop:admin_categories' %}" class="btn btn-outline-primary w-100">Vào trang</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Danh mục -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-link shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-grid fs-4 text-success me-2"></i>
+          <h5 class="mb-0">Danh mục</h5>
+        </div>
+        <p class="text-muted mb-3">Quản lý nhóm sản phẩm & phân loại dễ dàng.</p>
+        <a href="{% url 'shop:admin_categories' %}" class="btn btn-outline-success w-100">Vào trang</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Đơn hàng -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-link shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-journal-text fs-4 text-danger me-2"></i>
+          <h5 class="mb-0">Đơn hàng</h5>
+        </div>
+        <p class="text-muted mb-3">Theo dõi tình trạng & xử lý đơn hàng.</p>
+        <a href="{% url 'shop:admin_categories' %} "class="btn btn-outline-danger w-100">Vào trang</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tài khoản -->
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-link shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-people fs-4 text-secondary me-2"></i>
+          <h5 class="mb-0">Tài khoản</h5>
+        </div>
+        <p class="text-muted mb-3">Quản lý người dùng và quyền truy cập.</p>
+        <a href="{% url 'shop:admin_categories' %}" class="btn btn-outline-secondary w-100">Vào trang</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="my-4">
+
+<div class="row g-4">
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Tổng sản phẩm</div>
+        <div class="fs-3 fw-bold">{{ total_products }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Tổng danh mục</div>
+        <div class="fs-3 fw-bold">{{ total_categories }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Tổng đơn hàng</div>
+        <div class="fs-3 fw-bold">{{ total_orders }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Tổng tài khoản</div>
+        <div class="fs-3 fw-bold">{{ total_accounts }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

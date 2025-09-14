@@ -4,9 +4,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-   path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),
     path('', include('shop.urls')),
-    path('api/', include('shop.urls')),  # ← API  # Gọi tới file urls.py của app shop
+    path('api/', include('shop.urls')),  # ← API  # Gọi tới file urls.py của app shop  
+    path("admin-panel/", include("shop.urls")),
 ]
 
 # Thêm dòng này để load ảnh trong thư mục media

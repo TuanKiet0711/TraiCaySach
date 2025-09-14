@@ -1,0 +1,184 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Danh mục · Admin{% endblock %}
+{% block page_title %}Danh mục{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+
+    <!-- Thêm mới (inline) -->
+    <form id="createForm" class="row g-2 align-items-center mb-3" autocomplete="off">
+      <div class="col-auto">
+        <label for="newName" class="col-form-label fw-semibold">Thêm danh mục:</label>
+      </div>
+      <div class="col-md-4 col-sm-6">
+        <input type="text" id="newName" class="form-control" placeholder="Nhập tên danh mục…" required>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-success" type="submit">+ Tạo mới</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th style="width:25%">ID</th>
+            <th style="width:55%">Tên danh mục</th>
+            <th class="text-end" style="width:20%">Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="catTableBody">
+        {% for c in items %}
+          <tr data-id="{{ c.id }}">
+            <!-- ID -->
+            <td><code class="small">{{ c.id }}</code></td>
+
+            <!-- Tên danh mục (inline edit) -->
+            <td class="cat-name">
+              <span class="name-view">{{ c.ten }}</span>
+              <input class="form-control name-edit d-none" type="text" value="{{ c.ten }}">
+            </td>
+
+            <!-- Actions -->
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-primary btn-edit" title="Sửa">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-success d-none btn-save" title="Lưu">
+                <i class="bi bi-check-lg"></i>
+              </button>
+              <button class="btn btn-sm btn-secondary d-none btn-cancel" title="Hủy">
+                <i class="bi bi-x-lg"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger btn-delete" title="Xóa">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-center text-muted py-4">Chưa có danh mục</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+(function() {
+  // --- CSRF helper ---
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        cookie = cookie.trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const CSRF = getCookie('csrftoken');
+
+  // --- Create new category (inline form) ---
+  const createForm = document.getElementById('createForm');
+  createForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('newName').value.trim();
+    if (!name) return;
+    const res = await fetch('/api/categories/create/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ ten_danh_muc: name })
+    });
+    if (res.ok) {
+      location.reload();
+    } else {
+      alert('Tạo danh mục thất bại');
+    }
+  });
+
+  // --- Table actions (edit/save/cancel/delete) ---
+  const tbody = document.getElementById('catTableBody');
+
+  tbody.addEventListener('click', async (e) => {
+    const row = e.target.closest('tr');
+    if (!row) return;
+    const id = row.dataset.id;
+    const nameCell = row.querySelector('.cat-name');
+    const viewEl  = nameCell.querySelector('.name-view');
+    const inputEl = nameCell.querySelector('.name-edit');
+    const btnEdit   = row.querySelector('.btn-edit');
+    const btnSave   = row.querySelector('.btn-save');
+    const btnCancel = row.querySelector('.btn-cancel');
+    const btnDelete = row.querySelector('.btn-delete');
+
+    // Enter edit mode
+    if (e.target.closest('.btn-edit')) {
+      inputEl.value = viewEl.textContent.trim();
+      viewEl.classList.add('d-none');
+      inputEl.classList.remove('d-none');
+      btnEdit.classList.add('d-none');
+      btnSave.classList.remove('d-none');
+      btnCancel.classList.remove('d-none');
+      inputEl.focus();
+      return;
+    }
+
+    // Cancel edit
+    if (e.target.closest('.btn-cancel')) {
+      inputEl.classList.add('d-none');
+      viewEl.classList.remove('d-none');
+      btnSave.classList.add('d-none');
+      btnCancel.classList.add('d-none');
+      btnEdit.classList.remove('d-none');
+      return;
+    }
+
+    // Save edit (PUT)
+    if (e.target.closest('.btn-save')) {
+      const newName = inputEl.value.trim();
+      if (!newName) { alert('Tên không được rỗng'); return; }
+      const res = await fetch(`/api/categories/${id}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ ten_danh_muc: newName })
+      });
+      if (res.ok) {
+        viewEl.textContent = newName;
+        inputEl.classList.add('d-none');
+        viewEl.classList.remove('d-none');
+        btnSave.classList.add('d-none');
+        btnCancel.classList.add('d-none');
+        btnEdit.classList.remove('d-none');
+      } else {
+        alert('Lưu thất bại');
+      }
+      return;
+    }
+
+    // Delete
+    if (e.target.closest('.btn-delete')) {
+      if (!confirm('Xóa danh mục này?')) return;
+      const res = await fetch(`/api/categories/${id}/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': CSRF }
+      });
+      if (res.ok) {
+        row.remove();
+        if (!tbody.querySelector('tr')) location.reload();
+      } else {
+        alert('Không thể xóa danh mục');
+      }
+      return;
+    }
+  });
+})();
+</script>
+{% endblock %}
+{% endblock %}
