@@ -1,0 +1,103 @@
+/* ===== DANH MỤC NỔI BẬT ===== */
+.category-card {
+  transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+.category-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.category-card img {
+  height: 120px;
+  object-fit: contain;
+}
+.category-card .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  color: #333;
+}
+.carousel-item img {
+        max-height: 500px;
+        object-fit: cover;
+        width: 100%;
+    }
+    .carousel-caption {
+        bottom: 0;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.4); /* phủ lớp mờ */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .carousel-caption h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    }
+    .carousel-caption p {
+        font-size: 1.3rem;
+        margin-top: 10px;
+    }
+.product-card img {
+    height: 220px;          /* cố định chiều cao ảnh */
+    object-fit: cover;      /* cắt cho đều, không méo */
+    width: 100%;            /* luôn full chiều ngang */
+    border-radius: 8px;     /* bo góc cho đẹp */
+}
+.product-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    color: #333;
+}
+.navbar {
+    background-color: #198754 !important; /* xanh lá */
+}
+
+.navbar .nav-link,
+.navbar .navbar-brand {
+    color: #fff !important;  /* chữ trắng */
+}
+
+.navbar .nav-link:hover,
+.navbar .navbar-brand:hover {
+    color: #f8f9fa !important; /* trắng sáng khi hover */
+}
+footer {
+    background-color: #198754 !important; /* xanh lá */
+    color: #fff !important;              /* chữ trắng */
+}
+/* Nút "Mua ngay" */
+.btn-buy-now {
+    background-color: #198754; /* xanh lá */
+    color: #fff;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+.btn-buy-now:hover {
+    background-color: #146c43; /* xanh lá đậm hơn khi hover */
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Nút "Thêm vào giỏ" */
+.btn-add-cart {
+    border: 2px solid #198754;
+    color: #198754;
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+.btn-add-cart:hover {
+    background-color: #198754;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
