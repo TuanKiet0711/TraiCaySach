@@ -1,0 +1,57 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Xóa sản phẩm{% endblock %}
+{% block page_title %}Xóa sản phẩm{% endblock %}
+
+{% block content %}
+<div class="card border-danger shadow-sm">
+  <div class="card-body">
+    <h5 class="text-danger">Bạn chắc chắn muốn xóa sản phẩm này?</h5>
+    <p class="mb-1">ID: <code class="small">{{ product_id }}</code></p>
+    <p class="mb-3">Tên: <span id="productName" class="fw-semibold">Đang tải…</span></p>
+    <div class="d-flex gap-2">
+      <button id="btnDelete" class="btn btn-danger">Xóa</button>
+      <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(async function(){
+  const id = "{{ product_id }}";
+  function getCookie(name){
+    let v=null;
+    if(document.cookie)for(let c of document.cookie.split(';')){
+      c=c.trim();
+      if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
+    }
+    return v;
+  }
+  const CSRF = getCookie('csrftoken');
+
+  // load name
+  const res = await fetch(`/api/products/${id}/`);
+  if(res.ok){
+    const data = await res.json();
+    document.getElementById('productName').textContent = data.ten_san_pham || '(không xác định)';
+  } else {
+    document.getElementById('productName').textContent = 'Không tìm thấy';
+  }
+
+  document.getElementById('btnDelete').addEventListener('click', async ()=>{
+    if(!confirm('Xóa sản phẩm này?')) return;
+    const r = await fetch(`/api/products/${id}/`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': CSRF }
+    });
+    if(r.ok){
+      window.location = "{% url 'shop:admin_products' %}";
+    } else {
+      const err = await r.json().catch(()=>({}));
+      alert(err.error || 'Không thể xóa');
+    }
+  });
+})();
+</script>
+{% endblock %}

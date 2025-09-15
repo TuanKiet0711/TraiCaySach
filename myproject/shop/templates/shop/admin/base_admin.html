@@ -49,7 +49,7 @@
       <a class="btn {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}"
          href="{% url 'shop:admin_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Bảng điều khiển</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_products' %}active{% endif %}"
-         href="{% url 'shop:admin_categories' %}"><i class="bi bi-basket3 me-2"></i>Sản phẩm</a>
+         href="{% url 'shop:admin_products' %}"><i class="bi bi-basket3 me-2"></i>Sản phẩm</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}"
          href="{% url 'shop:admin_categories' %}"><i class="bi bi-columns-gap me-2"></i>Danh mục</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}"

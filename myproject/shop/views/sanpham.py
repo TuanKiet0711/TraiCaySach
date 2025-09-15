@@ -1,10 +1,9 @@
-# shop/views/sanpham.py
 from django.shortcuts import render, redirect
 from datetime import datetime
 from bson import ObjectId
 from ..database import san_pham, danh_muc, gio_hang
 
-def home(request):
+def sanpham_list(request):
     # Lấy danh mục và tạo map id -> tên
     categories = list(danh_muc.find({}))
     cat_map = {}
@@ -33,24 +32,31 @@ def home(request):
         imgs = sp.get("hinh_anh") or []
         sp["hinh_anh"] = imgs if isinstance(imgs, list) else [imgs]
 
+    # Có thể tách hot/new nếu cần, hoặc trả toàn bộ
     hot_products = products[:3]
     new_products = products[3:6]
 
-    return render(request, "shop/home.html", {
+    return render(request, "shop/sanpham.html", {
         "categories": categories,
         "hot_products": hot_products,
-        "new_products": new_products
+        "new_products": new_products,
+        "products": products
     })
+
 
 def product_by_category(request, cat_id):
     try:
         oid = ObjectId(cat_id)
     except Exception:
-        return render(request, "shop/category.html", {"products": [], "error": "Mã danh mục không hợp lệ"})
+        return render(request, "shop/category.html", {
+            "products": [],
+            "error": "Mã danh mục không hợp lệ"
+        })
     products = list(san_pham.find({"danh_muc_id": oid}))
     for sp in products:
         sp["id"] = str(sp["_id"])
     return render(request, "shop/category.html", {"products": products})
+
 
 def add_to_cart(request, sp_id):
     # TODO: lấy user thật từ session
@@ -58,7 +64,7 @@ def add_to_cart(request, sp_id):
     try:
         sp = san_pham.find_one({"_id": ObjectId(sp_id)})
         if not sp:
-            return redirect("home")
+            return redirect("sanpham_list")  # đổi lại name cho đúng
         item = {
             "tai_khoan_id": ObjectId(user_id),
             "san_pham_id": sp["_id"],
@@ -70,13 +76,4 @@ def add_to_cart(request, sp_id):
         gio_hang.insert_one(item)
     except Exception:
         pass
-    return redirect("home")
-
-def search(request):
-    query = request.GET.get("q", "")
-    results = []
-    if query:
-        results = list(san_pham.find({"ten_san_pham": {"$regex": query, "$options": "i"}}))
-        for sp in results:
-            sp["id"] = str(sp["_id"])
-    return render(request, "shop/search.html", {"query": query, "results": results})
+    return redirect("sanpham_list")

@@ -1,0 +1,109 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Sửa sản phẩm{% endblock %}
+{% block page_title %}Sửa sản phẩm{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form id="editForm" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="ten">Tên sản phẩm</label>
+        <input type="text" id="ten" class="form-control" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="mo_ta">Mô tả</label>
+        <textarea id="mo_ta" class="form-control" rows="3"></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
+        <input type="number" id="gia" class="form-control" required min="0" step="1000">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="hinh_anh">Hình ảnh (URL hoặc đường dẫn)</label>
+        <input type="text" id="hinh_anh" class="form-control">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="danh_muc">Danh mục</label>
+        <select id="danh_muc" class="form-select" required>
+          <option value="">-- Chọn danh mục --</option>
+          {% for dm in categories %}
+            <option value="{{ dm.id }}">{{ dm.ten }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Lưu thay đổi</button>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(async function(){
+  const id = "{{ product_id }}";
+
+  function getCookie(name){
+    let v=null;
+    if(document.cookie)for(let c of document.cookie.split(';')){
+      c=c.trim();
+      if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
+    }
+    return v;
+  }
+  const CSRF = getCookie('csrftoken');
+
+  // nạp dữ liệu hiện tại
+  const res = await fetch(`/api/products/${id}/`);
+  if(!res.ok){
+    alert('Không tìm thấy sản phẩm');
+    window.location="{% url 'shop:admin_products' %}";
+    return;
+  }
+  const cur = await res.json();
+  document.getElementById('ten').value = cur.ten_san_pham || '';
+  document.getElementById('mo_ta').value = cur.mo_ta || '';
+  document.getElementById('gia').value = cur.gia || 0;
+  document.getElementById('hinh_anh').value = (cur.hinh_anh && cur.hinh_anh.length>0) ? cur.hinh_anh[0] : '';
+  if(cur.danh_muc_id){
+    document.getElementById('danh_muc').value = cur.danh_muc_id;
+  }
+
+  // submit PUT
+  document.getElementById('editForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const payload = {
+      ten_san_pham: document.getElementById('ten').value.trim(),
+      mo_ta: document.getElementById('mo_ta').value.trim(),
+      gia: parseInt(document.getElementById('gia').value, 10) || 0,
+      hinh_anh: document.getElementById('hinh_anh').value.trim() ? 
+                [document.getElementById('hinh_anh').value.trim()] : [],
+      danh_muc_id: document.getElementById('danh_muc').value
+    };
+    if(!payload.ten_san_pham || !payload.danh_muc_id){ 
+      alert("Vui lòng nhập đủ thông tin"); 
+      return; 
+    }
+
+    const r = await fetch(`/api/products/${id}/`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF},
+      body: JSON.stringify(payload)
+    });
+    if(r.ok){
+      window.location="{% url 'shop:admin_products' %}";
+    } else {
+      const err = await r.json().catch(()=>({}));
+      alert(err.error || 'Lưu thất bại');
+    }
+  });
+})();
+</script>
+{% endblock %}
