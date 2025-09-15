@@ -81,13 +81,12 @@
       border-radius: 10px;
       margin-left: 8px;
     }
-    /* Ảnh thumbnail */
+    /* Ảnh thumbnail nhỏ gọn */
     .thumb-img {
-      width: 120px; /* cố định chiều rộng */
-      height: 100px; /* cố định chiều cao */
+      width: 80px;     /* cố định chiều rộng */
+      height: 60px;    /* cố định chiều cao */
       object-fit: cover; /* cắt vừa khung, không méo */
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
       border: 1px solid #ddd;
     }
   </style>
@@ -126,9 +125,7 @@
               {% if items %}
                 {% for sp in items %}
                   <tr>
-                    <td>
-                      <code class="small">{{ sp.id }}</code>
-                    </td>
+                    <td><code class="small">{{ sp.id }}</code></td>
                     <td>{{ sp.ten }}</td>
                     <td>{{ sp.danh_muc }}</td>
                     <td>{{ sp.gia|floatformat:0 }} đ</td>
@@ -139,7 +136,6 @@
                         <span class="text-muted small">Không có ảnh</span>
                       {% endif %}
                     </td>
-
                     <td class="text-end">
                       <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_product_edit' sp.id %}"><i class="bi bi-pencil"></i> Sửa</a>
                       <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_product_delete' sp.id %}"><i class="bi bi-trash"></i> Xóa</a>
@@ -148,12 +144,7 @@
                 {% endfor %}
                 {% for _ in placeholders %}
                   <tr>
-                    <td>&nbsp;</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
+                    <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
                   </tr>
                 {% endfor %}
               {% else %}
@@ -162,12 +153,7 @@
                 </tr>
                 {% for _ in placeholders %}
                   <tr>
-                    <td>&nbsp;</td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
+                    <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td>
                   </tr>
                 {% endfor %}
               {% endif %}
@@ -183,33 +169,15 @@
       <nav aria-label="Pagination">
         <ul class="pagination mb-0">
           <li class="page-item {% if not has_prev %}disabled{% endif %}">
-            <a class="page-link"
-              href="?page={{ page|add:'-1' }}{% if q %}
-                
-                &q={{ q|urlencode }}
-              {% endif %}">
-              Trước
-            </a>
+            <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Trước</a>
           </li>
           {% for p in page_numbers %}
             <li class="page-item {% if p == page %}active{% endif %}">
-              <a class="page-link"
-                href="?page={{ p }}{% if q %}
-                  
-                  &q={{ q|urlencode }}
-                {% endif %}">
-                {{ p }}
-              </a>
+              <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
             </li>
           {% endfor %}
           <li class="page-item {% if not has_next %}disabled{% endif %}">
-            <a class="page-link"
-              href="?page={{ page|add:'1' }}{% if q %}
-                
-                &q={{ q|urlencode }}
-              {% endif %}">
-              Sau
-            </a>
+            <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Sau</a>
           </li>
         </ul>
       </nav>
