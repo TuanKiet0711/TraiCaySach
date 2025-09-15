@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from ..database import san_pham, danh_muc, don_hang, tai_khoan
 from math import ceil
+from bson import ObjectId   # 👈 cần để query theo _id
 
 PAGE_SIZE = 10
 
@@ -98,20 +99,31 @@ def products_list(request):
 
     skip = (page - 1) * PAGE_SIZE
     cursor = (
-        san_pham.find(filter_, {"ten_san_pham": 1, "gia": 1, "danh_muc_id": 1})
+        san_pham.find(filter_, {"ten_san_pham": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1})
         .sort("ten_san_pham", 1)
         .skip(skip)
         .limit(PAGE_SIZE)
     )
-    items = [
-        {
+
+    items = []
+    for sp in cursor:
+        # Lấy tên danh mục từ collection danh_muc
+        cat_name = "—"
+        if sp.get("danh_muc_id"):
+            try:
+                cat = danh_muc.find_one({"_id": ObjectId(sp["danh_muc_id"])}, {"ten_danh_muc": 1})
+                if cat:
+                    cat_name = cat.get("ten_danh_muc", "—")
+            except Exception:
+                pass
+
+        items.append({
             "id": str(sp["_id"]),
             "ten": sp.get("ten_san_pham") or "Sản phẩm",
             "gia": sp.get("gia", 0),
-            "danh_muc": str(sp.get("danh_muc_id")) if sp.get("danh_muc_id") else None,
-        }
-        for sp in cursor
-    ]
+            "hinh_anh": sp["hinh_anh"][0] if sp.get("hinh_anh") else None,
+            "danh_muc": cat_name,
+        })
 
     placeholders = max(0, PAGE_SIZE - len(items))
     has_prev = page > 1
@@ -135,28 +147,18 @@ def products_list(request):
 
 @staff_member_required
 def product_create(request):
-    # Lấy danh sách danh mục từ MongoDB
     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
-
     ctx = {"categories": categories}
     return render(request, "shop/admin/products_create.html", ctx)
 
-
 @staff_member_required
 def product_edit(request, id: str):
-    # 👉 Thêm lấy danh sách danh mục
     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
-
-    ctx = {
-        "product_id": id,
-        "categories": categories,   # Truyền xuống template
-    }
+    ctx = {"product_id": id, "categories": categories}
     return render(request, "shop/admin/products_edit.html", ctx)
-
 
 @staff_member_required
 def product_delete(request, id: str):
     return render(request, "shop/admin/products_delete.html", {"product_id": id})
-

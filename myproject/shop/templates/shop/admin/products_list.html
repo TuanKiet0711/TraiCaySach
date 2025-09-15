@@ -1,150 +1,218 @@
-{% extends "shop/admin/base_admin.html" %}
-{% block title %}Sản phẩm · Admin{% endblock %}
-{% block page_title %}Sản phẩm{% endblock %}
+{% extends 'shop/admin/base_admin.html' %}
+{% block title %}
+  Sản phẩm · Admin
+{% endblock %}
+{% block page_title %}
+  Sản phẩm
+{% endblock %}
 
 {% block content %}
-<style>
-  html, body {height: 100%; overflow: hidden;}
-  .admin-fixed {
-    height: calc(100vh - 0px);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .toolbar-tight {margin-bottom: .5rem!important;}
-  .card-body-tight {padding: .5rem 1rem!important;}
-  .table-flex {flex: 1 1 auto; min-height: 0; overflow: hidden;}
+  <style>
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+    .admin-fixed {
+      height: calc(100vh - 0px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .toolbar-tight {
+      margin-bottom: 0.5rem !important;
+    }
+    .card-body-tight {
+      padding: 0.5rem 1rem !important;
+    }
+    .table-flex {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .pagination-fixed {
+      position: fixed;
+      right: 16px;
+      bottom: 12px;
+      z-index: 1050;
+      background: #fff;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    .searchbar .input-group {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(30, 60, 120, 0.06);
+    }
+    .searchbar .form-control {
+      border-radius: 10px 0 0 10px;
+      padding-left: 38px;
+    }
+    .searchbar .icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #6c757d;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+    .btn-find {
+      background: linear-gradient(180deg, #4f8cff 0%, #3b78ff 100%);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      border-radius: 0 10px 10px 0;
+      padding: 0.35rem 0.75rem;
+      box-shadow: 0 8px 16px rgba(60, 120, 240, 0.18);
+      transition: transform 0.08s ease, filter 0.2s ease;
+    }
+    .btn-find:hover {
+      filter: brightness(1.04);
+      transform: translateY(-1px);
+    }
+    .btn-find:active {
+      transform: none;
+      filter: brightness(0.98);
+    }
+    .btn-reset {
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    /* Ảnh thumbnail */
+    .thumb-img {
+      width: 120px; /* cố định chiều rộng */
+      height: 100px; /* cố định chiều cao */
+      object-fit: cover; /* cắt vừa khung, không méo */
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      border: 1px solid #ddd;
+    }
+  </style>
 
-  .pagination-fixed {
-    position: fixed;
-    right: 16px;
-    bottom: 12px;
-    z-index: 1050;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,.1);
-    border-radius: .5rem;
-    padding: .25rem .5rem;
-    box-shadow: 0 4px 14px rgba(0,0,0,.08);
-  }
-  .searchbar .input-group {
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 14px rgba(30,60,120,.06);
-  }
-  .searchbar .form-control {
-    border-radius: 10px 0 0 10px;
-    padding-left: 38px;
-  }
-  .searchbar .icon {
-    position: absolute;
-    left: 12px; top: 50%;
-    transform: translateY(-50%);
-    color: #6c757d; opacity: .65;
-    pointer-events: none;
-  }
-  .btn-find {
-    background: linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
-    color:#fff; border:none;
-    font-weight:600;
-    border-radius: 0 10px 10px 0;
-    padding: .35rem .75rem;
-    box-shadow: 0 8px 16px rgba(60,120,240,.18);
-    transition: transform .08s ease, filter .2s ease;
-  }
-  .btn-find:hover { filter: brightness(1.04); transform: translateY(-1px); }
-  .btn-find:active { transform: none; filter: brightness(.98); }
-  .btn-reset { border-radius: 10px; margin-left: 8px; }
-</style>
+  <div class="admin-fixed">
+    <!-- Thanh tìm kiếm + thêm sản phẩm -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
+      <form class="d-flex searchbar" method="get" action="" style="min-width:420px">
+        <div class="input-group input-group-sm position-relative">
+          <i class="bi bi-search icon"></i>
+          <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Tìm theo tên sản phẩm…" />
+          <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Tìm</button>
+          <a class="btn btn-light btn-sm btn-reset" href="{% url 'shop:admin_products' %}"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
+        </div>
+      </form>
 
-<div class="admin-fixed">
+      <a class="btn btn-success btn-sm" href="{% url 'shop:admin_product_create' %}">+ Thêm sản phẩm</a>
+    </div>
 
-  <!-- Thanh tìm kiếm + thêm sản phẩm -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
-    <form class="d-flex searchbar" method="get" action="" style="min-width:420px">
-      <div class="input-group input-group-sm position-relative">
-        <i class="bi bi-search icon"></i>
-        <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control"
-               placeholder="Tìm theo tên sản phẩm…">
-        <button class="btn btn-find" type="submit">
-          <i class="bi bi-funnel me-1"></i>Tìm
-        </button>
-        <a class="btn btn-light btn-sm btn-reset" href="{% url 'shop:admin_products' %}">
-          <i class="bi bi-x-circle me-1"></i>Xóa lọc
-        </a>
-      </div>
-    </form>
-
-    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_product_create' %}">+ Thêm sản phẩm</a>
-  </div>
-
-  <!-- Thẻ card chứa bảng -->
-  <div class="card shadow-sm table-flex">
-    <div class="card-body card-body-tight">
-      <div class="table-responsive">
-        <table class="table align-middle mb-0">
-          <thead>
-            <tr>
-              <th style="width:20%">ID</th>
-              <th style="width:25%">Tên sản phẩm</th>
-              <th style="width:25%">Danh mục</th>
-              <th style="width:15%">Giá</th>
-              <th class="text-end" style="width:15%">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% if items %}
-            {% for sp in items %}
+    <!-- Bảng sản phẩm -->
+    <div class="card shadow-sm table-flex">
+      <div class="card-body card-body-tight">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
               <tr>
-                <td><code class="small">{{ sp.id }}</code></td>
-                <td>{{ sp.ten }}</td>
-                <td>{{ sp.danh_muc }}</td>
-                <td>{{ sp.gia|floatformat:0 }} đ</td>
-                <td class="text-end">
-                  <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_product_edit' sp.id %}">
-                    <i class="bi bi-pencil"></i> Sửa
-                  </a>
-                  <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_product_delete' sp.id %}">
-                    <i class="bi bi-trash"></i> Xóa
-                  </a>
-                </td>
+                <th style="width:18%">ID</th>
+                <th style="width:22%">Tên sản phẩm</th>
+                <th style="width:20%">Danh mục</th>
+                <th style="width:15%">Giá</th>
+                <th style="width:15%">Ảnh</th>
+                <th class="text-end" style="width:10%">Hành động</th>
               </tr>
-            {% endfor %}
-            {% for _ in placeholders %}
-              <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
-            {% endfor %}
-          {% else %}
-            <tr><td colspan="5" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
-            {% for _ in placeholders %}
-              <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
-            {% endfor %}
-          {% endif %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% if items %}
+                {% for sp in items %}
+                  <tr>
+                    <td>
+                      <code class="small">{{ sp.id }}</code>
+                    </td>
+                    <td>{{ sp.ten }}</td>
+                    <td>{{ sp.danh_muc }}</td>
+                    <td>{{ sp.gia|floatformat:0 }} đ</td>
+                    <td>
+                      {% if sp.hinh_anh %}
+                        <img src="/media/{{ sp.hinh_anh }}" class="thumb-img" />
+                      {% else %}
+                        <span class="text-muted small">Không có ảnh</span>
+                      {% endif %}
+                    </td>
+
+                    <td class="text-end">
+                      <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_product_edit' sp.id %}"><i class="bi bi-pencil"></i> Sửa</a>
+                      <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_product_delete' sp.id %}"><i class="bi bi-trash"></i> Xóa</a>
+                    </td>
+                  </tr>
+                {% endfor %}
+                {% for _ in placeholders %}
+                  <tr>
+                    <td>&nbsp;</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">Không có dữ liệu</td>
+                </tr>
+                {% for _ in placeholders %}
+                  <tr>
+                    <td>&nbsp;</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                {% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Phân trang -->
-  <div class="pagination-fixed">
-    <div class="text-muted small mb-1">
-      Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
-    </div>
-    <nav aria-label="Pagination">
-      <ul class="pagination mb-0">
-        <li class="page-item {% if not has_prev %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Trước</a>
-        </li>
-        {% for p in page_numbers %}
-          <li class="page-item {% if p == page %}active{% endif %}">
-            <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
+    <!-- Phân trang -->
+    <div class="pagination-fixed">
+      <div class="text-muted small mb-1">Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục</div>
+      <nav aria-label="Pagination">
+        <ul class="pagination mb-0">
+          <li class="page-item {% if not has_prev %}disabled{% endif %}">
+            <a class="page-link"
+              href="?page={{ page|add:'-1' }}{% if q %}
+                
+                &q={{ q|urlencode }}
+              {% endif %}">
+              Trước
+            </a>
           </li>
-        {% endfor %}
-        <li class="page-item {% if not has_next %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Sau</a>
-        </li>
-      </ul>
-    </nav>
+          {% for p in page_numbers %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link"
+                href="?page={{ p }}{% if q %}
+                  
+                  &q={{ q|urlencode }}
+                {% endif %}">
+                {{ p }}
+              </a>
+            </li>
+          {% endfor %}
+          <li class="page-item {% if not has_next %}disabled{% endif %}">
+            <a class="page-link"
+              href="?page={{ page|add:'1' }}{% if q %}
+                
+                &q={{ q|urlencode }}
+              {% endif %}">
+              Sau
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
-
-</div>
 {% endblock %}

@@ -1,108 +1,121 @@
 {% extends 'shop/admin/base_admin.html' %}
-{% block title %}
-  Thêm sản phẩm
-{% endblock %}
-{% block page_title %}
-  Thêm sản phẩm
-{% endblock %}
+{% block title %}Thêm sản phẩm{% endblock %}
+{% block page_title %}Thêm sản phẩm{% endblock %}
 
 {% block content %}
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <!-- thêm enctype="multipart/form-data" -->
-      <form id="createForm" autocomplete="off" enctype="multipart/form-data">
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="ten">Tên sản phẩm</label>
-          <input type="text" id="ten" class="form-control" required placeholder="VD: Táo Mỹ" />
-        </div>
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form id="createForm" autocomplete="off" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="ten">Tên sản phẩm</label>
+        <input type="text" id="ten" class="form-control" required placeholder="VD: Táo Mỹ" />
+      </div>
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="mo_ta">Mô tả</label>
-          <textarea id="mo_ta" class="form-control" rows="3" placeholder="Mô tả sản phẩm…"></textarea>
-        </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="mo_ta">Mô tả</label>
+        <textarea id="mo_ta" class="form-control" rows="3" placeholder="Mô tả sản phẩm…"></textarea>
+      </div>
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-          <input type="number" id="gia" class="form-control" required min="0" step="1000" placeholder="85000" />
-        </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
+        <input type="number" id="gia" class="form-control" required min="0" step="1000" placeholder="85000" />
+      </div>
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="hinh_anh">Hình ảnh</label>
-          <!-- đổi sang type="file" -->
-          <input type="file" id="hinh_anh" class="form-control" accept="image/*" />
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="hinh_anh">Hình ảnh</label>
+        <input type="file" id="hinh_anh" class="form-control" accept="image/*" />
+        <div class="mt-2">
+          <img id="preview_img" src="" alt="Xem trước ảnh" style="max-height:120px; display:none; border:1px solid #ccc; padding:3px;">
         </div>
+      </div>
 
-        <div class="mb-3">
-          <label class="form-label">Danh mục</label>
-          <select id="danh_muc_id" class="form-select" required>
-            <option value="">-- Chọn danh mục --</option>
-            {% for cat in categories %}
-              <option value="{{ cat.id }}">{{ cat.ten }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <div class="mb-3">
+        <label class="form-label">Danh mục</label>
+        <select id="danh_muc_id" class="form-select" required>
+          <option value="">-- Chọn danh mục --</option>
+          {% for cat in categories %}
+            <option value="{{ cat.id }}">{{ cat.ten }}</option>
+          {% endfor %}
+        </select>
+      </div>
 
-        <div class="d-flex gap-2">
-          <button class="btn btn-success" type="submit">Lưu</button>
-          <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
-        </div>
-      </form>
-    </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success" type="submit">Lưu</button>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
+      </div>
+    </form>
   </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-  <script>
-    ;(function () {
-      function getCookie(name) {
-        let v = null
-        if (document.cookie)
-          for (let c of document.cookie.split(';')) {
-            c = c.trim()
-            if (c.startsWith(name + '=')) {
-              v = decodeURIComponent(c.split('=')[1])
-              break
-            }
-          }
-        return v
+<script>
+;(function () {
+  function getCookie(name) {
+    let v = null
+    if (document.cookie)
+      for (let c of document.cookie.split(';')) {
+        c = c.trim()
+        if (c.startsWith(name + '=')) {
+          v = decodeURIComponent(c.split('=')[1])
+          break
+        }
       }
-      const CSRF = getCookie('csrftoken')
-      const form = document.getElementById('createForm')
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const ten = document.getElementById('ten').value.trim()
-        const mo_ta = document.getElementById('mo_ta').value.trim()
-        const gia = parseInt(document.getElementById('gia').value, 10) || 0
-        const danh_muc_id = document.getElementById('danh_muc_id').value
-        const fileInput = document.getElementById('hinh_anh')
+    return v
+  }
+  const CSRF = getCookie('csrftoken')
+  const form = document.getElementById('createForm')
+  const fileInput = document.getElementById('hinh_anh')
+  const preview = document.getElementById('preview_img')
 
-        if (!ten || !danh_muc_id) {
-          alert('Vui lòng nhập đủ thông tin')
-          return
-        }
+  // Preview ảnh khi chọn file
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files[0]) {
+      const reader = new FileReader()
+      reader.onload = e => {
+        preview.src = e.target.result
+        preview.style.display = 'block'
+      }
+      reader.readAsDataURL(fileInput.files[0])
+    } else {
+      preview.style.display = 'none'
+    }
+  })
 
-        const formData = new FormData()
-        formData.append('ten_san_pham', ten)
-        formData.append('mo_ta', mo_ta)
-        formData.append('gia', gia)
-        formData.append('danh_muc_id', danh_muc_id)
-        if (fileInput.files.length > 0) {
-          formData.append('hinh_anh', fileInput.files[0])
-        }
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const ten = document.getElementById('ten').value.trim()
+    const mo_ta = document.getElementById('mo_ta').value.trim()
+    const gia = parseInt(document.getElementById('gia').value, 10) || 0
+    const danh_muc_id = document.getElementById('danh_muc_id').value
 
-        const res = await fetch("{% url 'shop:api_products_create' %}", {
-          method: 'POST',
-          headers: { 'X-CSRFToken': CSRF }, // KHÔNG set Content-Type
-          body: formData
-        })
+    if (!ten || !danh_muc_id) {
+      alert('Vui lòng nhập đủ thông tin')
+      return
+    }
 
-        if (res.ok) {
-          window.location = "{% url 'shop:admin_products' %}"
-        } else {
-          const err = await res.json().catch(() => ({}))
-          alert(err.error || 'Tạo sản phẩm thất bại')
-        }
-      })
-    })()
-  </script>
+    const formData = new FormData()
+    formData.append('ten_san_pham', ten)
+    formData.append('mo_ta', mo_ta)
+    formData.append('gia', gia)
+    formData.append('danh_muc_id', danh_muc_id)
+    if (fileInput.files.length > 0) {
+      formData.append('hinh_anh', fileInput.files[0])
+    }
+
+    const res = await fetch("{% url 'shop:api_products_create' %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': CSRF },
+      body: formData
+    })
+
+    if (res.ok) {
+      window.location = "{% url 'shop:admin_products' %}"
+    } else {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error || 'Tạo sản phẩm thất bại')
+    }
+  })
+})()
+</script>
 {% endblock %}
