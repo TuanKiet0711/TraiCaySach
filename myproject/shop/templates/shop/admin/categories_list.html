@@ -3,182 +3,159 @@
 {% block page_title %}Danh mục{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-  <div class="card-body">
+<style>
+  /* Ẩn scroll toàn trang */
+  html, body {height: 100%; overflow: hidden;}
 
-    <!-- Thêm mới (inline) -->
-    <form id="createForm" class="row g-2 align-items-center mb-3" autocomplete="off">
-      <div class="col-auto">
-        <label for="newName" class="col-form-label fw-semibold">Thêm danh mục:</label>
-      </div>
-      <div class="col-md-4 col-sm-6">
-        <input type="text" id="newName" class="form-control" placeholder="Nhập tên danh mục…" required>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-success" type="submit">+ Tạo mới</button>
-      </div>
-    </form>
+  /* Container chính chiếm hết viewport */
+  .admin-fixed {
+    height: calc(100vh - 0px); /* nếu có header cố định 56px thì đổi thành -56px */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead>
+  /* Thu nhỏ toolbar để đẩy bảng lên */
+  .toolbar-tight {margin-bottom: .5rem!important;}
+  .card-body-tight {padding: .5rem 1rem!important;}
+
+  /* Bảng chiếm phần còn lại, không sinh scroll riêng */
+  .table-flex {flex: 1 1 auto; min-height: 0; overflow: hidden;}
+
+  /* Phân trang cố định ở góc dưới */
+  .pagination-fixed {
+    position: fixed;
+    right: 16px;
+    bottom: 12px;
+    z-index: 1050;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: .5rem;
+    padding: .25rem .5rem;
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  }
+  /* --- Tút lại thanh tìm kiếm --- */
+.searchbar .input-group {
+  border-radius: 10px;
+  overflow: hidden;               /* bo góc đồng nhất */
+  box-shadow: 0 4px 14px rgba(30,60,120,.06);
+}
+.searchbar .form-control {
+  border-radius: 10px 0 0 10px;   /* bo bên trái */
+  padding-left: 38px;             /* chừa chỗ icon */
+}
+.searchbar .icon {
+  position: absolute;
+  left: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d; opacity: .65;
+  pointer-events: none;
+}
+
+/* Nút Tìm đẹp xíu */
+.btn-find {
+  background: linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
+  color:#fff; border:none;
+  font-weight:600;
+  border-radius: 0 10px 10px 0;   /* khớp với ô input */
+  padding: .35rem .75rem;
+  box-shadow: 0 8px 16px rgba(60,120,240,.18);
+  transition: transform .08s ease, filter .2s ease;
+}
+.btn-find:hover { filter: brightness(1.04); transform: translateY(-1px); }
+.btn-find:active { transform: none; filter: brightness(.98); }
+
+/* Nút Xóa lọc để rời khỏi input-group, bo đẹp */
+.btn-reset { border-radius: 10px; margin-left: 8px; }
+
+</style>
+
+<div class="admin-fixed">
+
+  <!-- Thanh tìm kiếm + thêm danh mục -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
+  <form class="d-flex searchbar" method="get" action="" style="min-width:420px">
+    <div class="input-group input-group-sm position-relative">
+      <i class="bi bi-search icon"></i>
+      <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control"
+             placeholder="Tìm theo tên danh mục…">
+      <button class="btn btn-find" type="submit">
+        <i class="bi bi-funnel me-1"></i>Tìm
+      </button>
+      <a class="btn btn-light btn-sm btn-reset" href="{% url 'shop:admin_categories' %}">
+        <i class="bi bi-x-circle me-1"></i>Xóa lọc
+      </a>
+    </div>
+  </form>
+
+  <a class="btn btn-success btn-sm" href="{% url 'shop:admin_category_create' %}">+ Thêm danh mục</a>
+</div>
+
+
+  <!-- Thẻ card chứa bảng -->
+  <div class="card shadow-sm table-flex">
+    <div class="card-body card-body-tight">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
           <tr>
             <th style="width:25%">ID</th>
             <th style="width:55%">Tên danh mục</th>
             <th class="text-end" style="width:20%">Hành động</th>
           </tr>
-        </thead>
-        <tbody id="catTableBody">
-        {% for c in items %}
-          <tr data-id="{{ c.id }}">
-            <!-- ID -->
-            <td><code class="small">{{ c.id }}</code></td>
-
-            <!-- Tên danh mục (inline edit) -->
-            <td class="cat-name">
-              <span class="name-view">{{ c.ten }}</span>
-              <input class="form-control name-edit d-none" type="text" value="{{ c.ten }}">
-            </td>
-
-            <!-- Actions -->
-            <td class="text-end">
-              <button class="btn btn-sm btn-outline-primary btn-edit" title="Sửa">
-                <i class="bi bi-pencil"></i>
-              </button>
-              <button class="btn btn-sm btn-success d-none btn-save" title="Lưu">
-                <i class="bi bi-check-lg"></i>
-              </button>
-              <button class="btn btn-sm btn-secondary d-none btn-cancel" title="Hủy">
-                <i class="bi bi-x-lg"></i>
-              </button>
-              <button class="btn btn-sm btn-outline-danger btn-delete" title="Xóa">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="3" class="text-center text-muted py-4">Chưa có danh mục</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+          {% if items %}
+            {% for c in items %}
+              <tr>
+                <td><code class="small">{{ c.id }}</code></td>
+                <td>{{ c.ten }}</td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_category_edit' c.id %}">
+                    <i class="bi bi-pencil"></i> Sửa
+                  </a>
+                  <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_category_delete' c.id %}">
+                    <i class="bi bi-trash"></i> Xóa
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+            {% for _ in placeholders %}
+              <tr><td>&nbsp;</td><td></td><td></td></tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+            {% for _ in placeholders %}
+              <tr><td>&nbsp;</td><td></td><td></td></tr>
+            {% endfor %}
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <!-- Phân trang nổi cố định -->
+  <div class="pagination-fixed">
+    <div class="text-muted small mb-1">
+      Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
+    </div>
+    <nav aria-label="Pagination">
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not has_prev %}disabled{% endif %}">
+          <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Trước</a>
+        </li>
+        {% for p in page_numbers %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
+          </li>
+        {% endfor %}
+        <li class="page-item {% if not has_next %}disabled{% endif %}">
+          <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Sau</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+
 </div>
-
-{% block extra_js %}
-<script>
-(function() {
-  // --- CSRF helper ---
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let cookie of cookies) {
-        cookie = cookie.trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
-  }
-  const CSRF = getCookie('csrftoken');
-
-  // --- Create new category (inline form) ---
-  const createForm = document.getElementById('createForm');
-  createForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('newName').value.trim();
-    if (!name) return;
-    const res = await fetch('/api/categories/create/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-      body: JSON.stringify({ ten_danh_muc: name })
-    });
-    if (res.ok) {
-      location.reload();
-    } else {
-      alert('Tạo danh mục thất bại');
-    }
-  });
-
-  // --- Table actions (edit/save/cancel/delete) ---
-  const tbody = document.getElementById('catTableBody');
-
-  tbody.addEventListener('click', async (e) => {
-    const row = e.target.closest('tr');
-    if (!row) return;
-    const id = row.dataset.id;
-    const nameCell = row.querySelector('.cat-name');
-    const viewEl  = nameCell.querySelector('.name-view');
-    const inputEl = nameCell.querySelector('.name-edit');
-    const btnEdit   = row.querySelector('.btn-edit');
-    const btnSave   = row.querySelector('.btn-save');
-    const btnCancel = row.querySelector('.btn-cancel');
-    const btnDelete = row.querySelector('.btn-delete');
-
-    // Enter edit mode
-    if (e.target.closest('.btn-edit')) {
-      inputEl.value = viewEl.textContent.trim();
-      viewEl.classList.add('d-none');
-      inputEl.classList.remove('d-none');
-      btnEdit.classList.add('d-none');
-      btnSave.classList.remove('d-none');
-      btnCancel.classList.remove('d-none');
-      inputEl.focus();
-      return;
-    }
-
-    // Cancel edit
-    if (e.target.closest('.btn-cancel')) {
-      inputEl.classList.add('d-none');
-      viewEl.classList.remove('d-none');
-      btnSave.classList.add('d-none');
-      btnCancel.classList.add('d-none');
-      btnEdit.classList.remove('d-none');
-      return;
-    }
-
-    // Save edit (PUT)
-    if (e.target.closest('.btn-save')) {
-      const newName = inputEl.value.trim();
-      if (!newName) { alert('Tên không được rỗng'); return; }
-      const res = await fetch(`/api/categories/${id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-        body: JSON.stringify({ ten_danh_muc: newName })
-      });
-      if (res.ok) {
-        viewEl.textContent = newName;
-        inputEl.classList.add('d-none');
-        viewEl.classList.remove('d-none');
-        btnSave.classList.add('d-none');
-        btnCancel.classList.add('d-none');
-        btnEdit.classList.remove('d-none');
-      } else {
-        alert('Lưu thất bại');
-      }
-      return;
-    }
-
-    // Delete
-    if (e.target.closest('.btn-delete')) {
-      if (!confirm('Xóa danh mục này?')) return;
-      const res = await fetch(`/api/categories/${id}/`, {
-        method: 'DELETE',
-        headers: { 'X-CSRFToken': CSRF }
-      });
-      if (res.ok) {
-        row.remove();
-        if (!tbody.querySelector('tr')) location.reload();
-      } else {
-        alert('Không thể xóa danh mục');
-      }
-      return;
-    }
-  });
-})();
-</script>
-{% endblock %}
 {% endblock %}

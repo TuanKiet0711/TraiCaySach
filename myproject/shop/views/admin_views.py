@@ -1,7 +1,11 @@
+# shop/views/admin_views.py
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from ..database import san_pham, danh_muc, don_hang, tai_khoan
-from django.contrib import messages   
+from math import ceil
+
+PAGE_SIZE = 10
+
 @staff_member_required
 def dashboard(request):
     ctx = {
@@ -13,33 +17,58 @@ def dashboard(request):
     return render(request, "shop/admin/dashboard.html", ctx)
 
 @staff_member_required
-def products_list(request):
-    items = list(san_pham.find({}).limit(50))
-    for sp in items:
-        sp["id"] = str(sp["_id"])
-        sp["ten"] = sp.get("ten_san_pham") or sp.get("ten") or "Sản phẩm"
-        sp["gia"] = sp.get("gia", 0)
-    return render(request, "shop/admin/products_list.html", {"items": items})
-
-@staff_member_required
 def categories_list(request):
-    cats = list(danh_muc.find({}))
-    for c in cats:
-        c["id"] = str(c["_id"])
-        c["ten"] = c.get("ten_danh_muc") or "Danh mục"
-    return render(request, "shop/admin/categories_list.html", {"items": cats})
+    q = (request.GET.get("q") or "").strip()
+    try:
+        page = max(int(request.GET.get("page", 1)), 1)
+    except ValueError:
+        page = 1
+
+    filter_ = {}
+    if q:
+        filter_["ten_danh_muc"] = {"$regex": q, "$options": "i"}
+
+    total = danh_muc.count_documents(filter_)
+    total_pages = max(1, ceil(total / PAGE_SIZE))
+    if page > total_pages:
+        page = total_pages
+
+    skip = (page - 1) * PAGE_SIZE
+    cursor = (danh_muc.find(filter_, {"ten_danh_muc": 1})
+                      .sort("ten_danh_muc", 1)
+                      .skip(skip)
+                      .limit(PAGE_SIZE))
+    items = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc") or "Danh mục"} for dm in cursor]
+
+    # Đệm hàng trống để bảng luôn đủ 10 hàng → footer đứng yên
+    placeholders = max(0, PAGE_SIZE - len(items))
+
+    has_prev = page > 1
+    has_next = page < total_pages
+    page_numbers = list(range(1, total_pages + 1))
+
+    ctx = {
+        "items": items,
+        "q": q,
+        "page": page,
+        "page_size": PAGE_SIZE,
+        "total": total,
+        "total_pages": total_pages,
+        "has_prev": has_prev,
+        "has_next": has_next,
+        "placeholders": range(placeholders),
+        "page_numbers": page_numbers,
+    }
+    return render(request, "shop/admin/categories_list.html", ctx)
 
 @staff_member_required
-def orders_list(request):
-    items = list(don_hang.find({}).limit(50))
-    for o in items:
-        o["id"] = str(o["_id"])
-    return render(request, "shop/admin/orders_list.html", {"items": items})
+def category_create(request):
+    return render(request, "shop/admin/category_create.html")
 
 @staff_member_required
-def accounts_list(request):
-    users = list(tai_khoan.find({}).limit(50))
-    for u in users:
-        u["id"] = str(u["_id"])
-        u["email"] = u.get("email") or u.get("ten_dang_nhap") or ""
-    return render(request, "shop/admin/accounts_list.html", {"items": users})
+def category_edit(request, id: str):
+    return render(request, "shop/admin/category_edit.html", {"cat_id": id})
+
+@staff_member_required
+def category_delete(request, id: str):
+    return render(request, "shop/admin/category_delete.html", {"cat_id": id})

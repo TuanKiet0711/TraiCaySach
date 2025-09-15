@@ -1,0 +1,53 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Thêm danh mục{% endblock %}
+{% block page_title %}Thêm danh mục{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form id="createForm" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="ten">Tên danh mục</label>
+        <input type="text" id="ten" class="form-control" required placeholder="VD: Trái cây tươi">
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-success" type="submit">Lưu</button>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_categories' %}">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  function getCookie(name) {
+    let v=null;
+    if(document.cookie) for(let c of document.cookie.split(';')){
+      c=c.trim();
+      if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
+    }
+    return v;
+  }
+  const CSRF = getCookie('csrftoken');
+  const form = document.getElementById('createForm');
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const ten = document.getElementById('ten').value.trim();
+    if(!ten) return;
+    const res = await fetch("{% url 'shop:api_categories_create' %}", {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF},
+      body: JSON.stringify({ ten_danh_muc: ten })
+    });
+    if(res.ok){
+      window.location = "{% url 'shop:admin_categories' %}";
+    } else {
+      const err = await res.json().catch(()=>({}));
+      alert(err.error || 'Tạo danh mục thất bại');
+    }
+  });
+})();
+</script>
+{% endblock %}

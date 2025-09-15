@@ -14,7 +14,6 @@ app_name = "shop"  # tuỳ chọn
 urlpatterns = [
     # ====== SITE (HTML) ======
     path("", views.home, name="home"),
-    path("search/", views.search, name="search"),
 
     # ====== API (JSON) – DANH MỤC ======
     path("api/categories/", dm_api.categories_list, name="api_categories_list"),           # GET
@@ -24,4 +23,8 @@ urlpatterns = [
  
     path("admin-panel/", av.dashboard, name="admin_dashboard"),
     path("admin-panel/categories/", av.categories_list, name="admin_categories"),
+    
+    path("admin-panel/categories/create/", av.category_create, name="admin_category_create"),
+    path("admin-panel/categories/<str:id>/edit/", av.category_edit, name="admin_category_edit"),
+    path("admin-panel/categories/<str:id>/delete/", av.category_delete, name="admin_category_delete"),
 ]

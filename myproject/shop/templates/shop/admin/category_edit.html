@@ -1,0 +1,61 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Sửa danh mục{% endblock %}
+{% block page_title %}Sửa danh mục{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form id="editForm" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="ten">Tên danh mục</label>
+        <input type="text" id="ten" class="form-control" required>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Lưu thay đổi</button>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_categories' %}">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(async function(){
+  const id = "{{ cat_id }}";
+  function getCookie(name){
+    let v=null;
+    if(document.cookie)for(let c of document.cookie.split(';')){
+      c=c.trim();
+      if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
+    }
+    return v;
+  }
+  const CSRF = getCookie('csrftoken');
+
+  // nạp dữ liệu hiện tại
+  const res = await fetch(`/api/categories/${id}/`);
+  if(!res.ok){ alert('Không tìm thấy danh mục'); window.location="{% url 'shop:admin_categories' %}"; return; }
+  const cur = await res.json();
+  document.getElementById('ten').value = cur.ten_danh_muc || '';
+
+  // submit PUT
+  document.getElementById('editForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const ten = document.getElementById('ten').value.trim();
+    if(!ten) return;
+    const r = await fetch(`/api/categories/${id}/`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF},
+      body: JSON.stringify({ ten_danh_muc: ten })
+    });
+    if(r.ok){
+      window.location="{% url 'shop:admin_categories' %}";
+    } else {
+      const err = await r.json().catch(()=>({}));
+      alert(err.error || 'Lưu thất bại');
+    }
+  });
+})();
+</script>
+{% endblock %}
