@@ -11,7 +11,7 @@ from .views import sanpham_view as spv
 
 # ====== Admin Panel views (HTML) ======
 from .views import home, sanpham, admin_views as av   # file shop/views/admin_views.py
-
+from .views import tai_khoan_view
 app_name = "shop"  # tuỳ chọn
 
 urlpatterns = [
@@ -31,6 +31,16 @@ urlpatterns = [
     path("api/products/create/", spv.products_create, name="api_products_create"),
     path("api/products/<str:id>/", spv.product_detail, name="api_product_detail"),
 
+      # ====== Accounts API ======
+    path('api/accounts/', tai_khoan_view.accounts_list, name='api_accounts_list'),             # GET
+    path('api/accounts/create/', tai_khoan_view.accounts_create, name='api_accounts_create'),  # POST (csrf_exempt)
+    path('api/accounts/<str:id>/', tai_khoan_view.account_detail, name='api_account_detail'),  # GET/PUT/DELETE (csrf_exempt)
+
+    # (auth nếu bạn còn dùng)
+    path('api/auth/register', tai_khoan_view.auth_register, name='api_auth_register'),
+    path('api/auth/login', tai_khoan_view.auth_login, name='api_auth_login'),
+    path('api/auth/logout', tai_khoan_view.auth_logout, name='api_auth_logout'),
+    path('api/auth/me', tai_khoan_view.auth_me, name='api_auth_me'),
     # ====== Admin Panel (HTML) ======
     path("admin-panel/", av.dashboard, name="admin_dashboard"),
     path("admin-panel/categories/", av.categories_list, name="admin_categories"),
