@@ -205,8 +205,9 @@ def auth_register(request):
     POST /api/auth/register
     Body: {ho_ten, email, sdt?, mat_khau}
     """
-    err = _json_required(request)
-    if err: return err
+    ctype = request.content_type or ""
+    if not ctype.startswith("application/json"):
+        return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
     try:
         body = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -217,6 +218,7 @@ def auth_register(request):
     sdt    = (body.get("sdt") or "").strip()
     mat_khau = (body.get("mat_khau") or "").strip()   # không mã hoá
 
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     if not ho_ten or not email or not mat_khau:
         return JsonResponse({"error": "Thiếu ho_ten / email / mat_khau"}, status=400)
     if not EMAIL_RE.match(email):
@@ -233,21 +235,25 @@ def auth_register(request):
     })
     user = tai_khoan.find_one({"_id": res.inserted_id})
 
+    # LƯU ĐỦ THÔNG TIN VÀO SESSION (thêm user_name)
     request.session["user_id"] = str(user["_id"])
     request.session["user_email"] = user["email"]
+    request.session["user_name"] = user.get("ho_ten", "")
     request.session["user_role"] = user.get("vai_tro", "customer")
 
     return JsonResponse({"user": _safe_user(user)}, status=201)
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def auth_login(request):
     """
     POST /api/auth/login
-    Body: {email, mat_khau}  (so sánh plain text)
+    Body: {email, mat_khau} (so sánh plain text)
     """
-    err = _json_required(request)
-    if err: return err
+    ctype = request.content_type or ""
+    if not ctype.startswith("application/json"):
+        return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
     try:
         body = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -262,17 +268,21 @@ def auth_login(request):
     if not user or password != user.get("mat_khau", ""):
         return JsonResponse({"error": "Email hoặc mật khẩu không đúng"}, status=401)
 
+    # LƯU ĐỦ THÔNG TIN VÀO SESSION (thêm user_name)
     request.session["user_id"] = str(user["_id"])
     request.session["user_email"] = user["email"]
+    request.session["user_name"] = user.get("ho_ten", "")
     request.session["user_role"] = user.get("vai_tro", "customer")
 
     return JsonResponse({"user": _safe_user(user)})
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def auth_logout(request):
     request.session.flush()
     return HttpResponse(status=204)
+
 
 @require_http_methods(["GET"])
 def auth_me(request):

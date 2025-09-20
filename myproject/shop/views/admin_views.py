@@ -1,14 +1,14 @@
-# shop/views/admin_views.py
 from django.shortcuts import render
-from django.contrib.admin.views.decorators import staff_member_required
+# from django.contrib.admin.views.decorators import staff_member_required  # ❌ bỏ
 from ..database import san_pham, danh_muc, don_hang, tai_khoan
 from math import ceil
-from bson import ObjectId   # 👈 cần để query theo _id
+from bson import ObjectId
+from .admin_required import admin_required  # ✅ thêm
 
 PAGE_SIZE = 10
 
 # =================== DASHBOARD =================== #
-@staff_member_required
+@admin_required
 def dashboard(request):
     ctx = {
         "total_products": san_pham.count_documents({}),
@@ -19,7 +19,7 @@ def dashboard(request):
     return render(request, "shop/admin/dashboard.html", ctx)
 
 # =================== CATEGORIES =================== #
-@staff_member_required
+@admin_required
 def categories_list(request):
     q = (request.GET.get("q") or "").strip()
     try:
@@ -67,20 +67,20 @@ def categories_list(request):
     }
     return render(request, "shop/admin/categories_list.html", ctx)
 
-@staff_member_required
+@admin_required
 def category_create(request):
     return render(request, "shop/admin/category_create.html")
 
-@staff_member_required
+@admin_required
 def category_edit(request, id: str):
     return render(request, "shop/admin/category_edit.html", {"cat_id": id})
 
-@staff_member_required
+@admin_required
 def category_delete(request, id: str):
     return render(request, "shop/admin/category_delete.html", {"cat_id": id})
 
 # =================== PRODUCTS =================== #
-@staff_member_required
+@admin_required
 def products_list(request):
     q = (request.GET.get("q") or "").strip()
     try:
@@ -107,7 +107,6 @@ def products_list(request):
 
     items = []
     for sp in cursor:
-        # Lấy tên danh mục từ collection danh_muc
         cat_name = "—"
         if sp.get("danh_muc_id"):
             try:
@@ -144,21 +143,20 @@ def products_list(request):
     }
     return render(request, "shop/admin/products_list.html", ctx)
 
-
-@staff_member_required
+@admin_required
 def product_create(request):
     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
     ctx = {"categories": categories}
     return render(request, "shop/admin/products_create.html", ctx)
 
-@staff_member_required
+@admin_required
 def product_edit(request, id: str):
     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
     ctx = {"product_id": id, "categories": categories}
     return render(request, "shop/admin/products_edit.html", ctx)
 
-@staff_member_required
+@admin_required
 def product_delete(request, id: str):
     return render(request, "shop/admin/products_delete.html", {"product_id": id})

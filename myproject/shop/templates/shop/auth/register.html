@@ -1,0 +1,80 @@
+{% extends "shop/base.html" %}
+{% block title %}Đăng ký - Trái Cây Sạch{% endblock %}
+{% block content %}
+<style>
+.card{border-radius:1rem}
+.btn-success{background-color:#198754;border-color:#198754}
+.btn-success:hover{background-color:#157347;border-color:#146c43}
+</style>
+
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h3 class="text-center mb-4 text-success fw-bold">Đăng ký</h3>
+        <form id="registerForm">
+          <div class="mb-3">
+            <label class="form-label">Họ tên</label>
+            <input type="text" name="ho_ten" class="form-control" placeholder="Nhập họ tên" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="Nhập email" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="sdt" class="form-control" placeholder="Nhập số điện thoại">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mật khẩu</label>
+            <input type="password" name="mat_khau" class="form-control" placeholder="Nhập mật khẩu" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nhập lại mật khẩu</label>
+            <input type="password" name="mat_khau2" class="form-control" placeholder="Nhập lại mật khẩu" required>
+          </div>
+          <button type="submit" class="btn btn-success w-100">Đăng ký</button>
+        </form>
+        <div class="text-center mt-3">
+          <small>Đã có tài khoản? <a href="{% url 'shop:shop_login' %}">Đăng nhập</a></small>
+        </div>
+        <div id="registerMsg" class="mt-3 text-center"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const f = e.target;
+  const ho_ten=f.ho_ten.value.trim();
+  const email=f.email.value.trim();
+  const sdt=f.sdt.value.trim();
+  const mat_khau=f.mat_khau.value.trim();
+  const mat_khau2=f.mat_khau2.value.trim();
+
+  const msg=document.getElementById('registerMsg');
+
+  // kiểm tra khớp mật khẩu
+  if(mat_khau !== mat_khau2){
+    msg.innerHTML='<div class="alert alert-danger">Mật khẩu nhập lại không khớp</div>';
+    return;
+  }
+
+  const res = await fetch('/api/auth/register', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ho_ten,email,sdt,mat_khau})
+  });
+
+  if(res.ok){
+    msg.innerHTML='<div class="alert alert-success">Đăng ký thành công</div>';
+    setTimeout(()=>location.href='{% url "shop:home" %}',1200);
+  }else{
+    const data = await res.json().catch(()=>({}));
+    msg.innerHTML='<div class="alert alert-danger">'+(data.error||'Đăng ký thất bại')+'</div>';
+  }
+});
+</script>
+{% endblock %}

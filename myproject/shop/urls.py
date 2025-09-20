@@ -12,6 +12,7 @@ from .views import sanpham_view as spv
 # ====== Admin Panel views (HTML) ======
 from .views import home, sanpham, admin_views as av   # file shop/views/admin_views.py
 from .views import tai_khoan_view
+from .views import auth_pages
 app_name = "shop"  # tuỳ chọn
 
 urlpatterns = [
@@ -21,6 +22,11 @@ urlpatterns = [
     path("sanpham/category/<str:cat_id>/", sanpham.product_by_category, name="product_by_category"),
     path("sanpham/add/<str:sp_id>/", sanpham.add_to_cart, name="add_to_cart"),
 
+    path('auth/login/', auth_pages.login_page, name='shop_login'),
+    path('auth/register/', auth_pages.register_page, name='shop_register'),
+
+    # (tuỳ chọn) route logout dành cho trang giao diện – chỉ chuyển hướng sau khi gọi API
+    path('auth/logout/', auth_pages.logout_page, name='shop_logout'),
     # ====== API (JSON) – DANH MỤC ======
     path("api/categories/", dm_api.categories_list, name="api_categories_list"),           # GET
     path("api/categories/create/", dm_api.categories_create, name="api_categories_create"),# POST
@@ -41,6 +47,11 @@ urlpatterns = [
     path('api/auth/login', tai_khoan_view.auth_login, name='api_auth_login'),
     path('api/auth/logout', tai_khoan_view.auth_logout, name='api_auth_logout'),
     path('api/auth/me', tai_khoan_view.auth_me, name='api_auth_me'),
+    
+    path('auth/login/', auth_pages.login_page, name='shop_login'),
+    path('auth/register/', auth_pages.register_page, name='shop_register'),
+    path('auth/logout/', auth_pages.logout_page, name='shop_logout'),
+
     # ====== Admin Panel (HTML) ======
     path("admin-panel/", av.dashboard, name="admin_dashboard"),
     path("admin-panel/categories/", av.categories_list, name="admin_categories"),
