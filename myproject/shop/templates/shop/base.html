@@ -9,19 +9,9 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'shop/css/style.css' %}">
   <style>
-    /* Làm body full height và flex để đẩy footer xuống đáy */
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-    /* main chiếm phần còn lại */
-    main.container {
-      flex: 1;
-    }
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; }
+    main.container { flex: 1; }
   </style>
 </head>
 <body>
@@ -32,6 +22,7 @@
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
+
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
           <li class="nav-item"><a class="nav-link" href="{% url 'shop:home' %}">Trang chủ</a></li>
@@ -60,7 +51,17 @@
             <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_login' %}">Đăng nhập</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_register' %}">Đăng ký</a></li>
           {% endif %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'shop:sanpham_list' %}"><i class="bi bi-bag"></i> Giỏ hàng</a></li>
+
+          <!-- Giỏ hàng có badge số lượng -->
+          <li class="nav-item">
+            <a class="nav-link position-relative" href="{% url 'shop:cart_page' %}">
+              <i class="bi bi-bag"></i> Giỏ hàng
+              <span id="cartCountBadge"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
+                0
+              </span>
+            </a>
+          </li>
         </ul>
       </div>
     </div>
@@ -72,14 +73,15 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Footer luôn ở đáy -->
+  <!-- Footer -->
   <footer class="text-center py-3 bg-success text-white mt-auto">
     <p>&copy; 2025 Trái Cây Sạch. All rights reserved.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
   <script>
-    // Đăng xuất: gọi API rồi về trang chủ
+    // Đăng xuất
     const btn = document.getElementById('btnLogout');
     if (btn) {
       btn.addEventListener('click', async (e) => {
@@ -88,6 +90,36 @@
         window.location.href = '{% url "shop:home" %}';
       });
     }
+
+    // Badge số lượng giỏ hàng
+    document.addEventListener('DOMContentLoaded', () => {
+      const badge = document.getElementById('cartCountBadge');
+
+      async function loadCartCount() {
+        try {
+          const res = await fetch('/api/cart'); // dùng session/user_id hiện tại
+          if (!res.ok) { badge.classList.add('d-none'); return; }
+          const data = await res.json();
+          const count = data.count || (data.items ? data.items.length : 0);
+          if (count > 0) {
+            badge.textContent = count;
+            badge.classList.remove('d-none');
+          } else {
+            badge.classList.add('d-none');
+          }
+        } catch (e) {
+          badge.classList.add('d-none');
+        }
+      }
+
+      // Expose để page con gọi sau khi thêm vào giỏ
+      window.updateCartBadge = loadCartCount;
+
+      // Load lần đầu
+      loadCartCount();
+    });
   </script>
+
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

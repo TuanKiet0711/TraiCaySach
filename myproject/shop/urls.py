@@ -8,11 +8,15 @@ from .views import danhmuc_view as dm_api
 
 # ====== API views (Sản phẩm – JSON) ======
 from .views import sanpham_view as spv
+from .views.cart_api import (
+    cart_get, cart_add_item, cart_update_item, cart_delete_item, cart_clear
+)
 
 # ====== Admin Panel views (HTML) ======
 from .views import home, sanpham, admin_views as av   # file shop/views/admin_views.py
 from .views import tai_khoan_view
 from .views import auth_pages
+from .views.cart_page import cart_page
 app_name = "shop"  # tuỳ chọn
 
 urlpatterns = [
@@ -36,7 +40,12 @@ urlpatterns = [
     path("api/products/", spv.products_list, name="api_products_list"),
     path("api/products/create/", spv.products_create, name="api_products_create"),
     path("api/products/<str:id>/", spv.product_detail, name="api_product_detail"),
-
+    path("cart/", cart_page, name="cart_page"),
+    path('api/cart/', cart_get, name='cart_get'),
+    path('api/cart/items/', cart_add_item, name='cart_add_item'),
+    path('api/cart/items/<str:id>/', cart_update_item, name='cart_update_item'),
+    path('api/cart/items/<str:id>/delete/', cart_delete_item, name='cart_delete_item'),
+    path('api/cart/clear/', cart_clear, name='cart_clear'),
       # ====== Accounts API ======
     path('api/accounts/', tai_khoan_view.accounts_list, name='api_accounts_list'),             # GET
     path('api/accounts/create/', tai_khoan_view.accounts_create, name='api_accounts_create'),  # POST (csrf_exempt)

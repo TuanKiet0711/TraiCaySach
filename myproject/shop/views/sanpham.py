@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from datetime import datetime
 from bson import ObjectId
 from ..database import san_pham, danh_muc, gio_hang
-
+from django.utils import timezone
 def sanpham_list(request):
     # Lấy danh mục và tạo map id -> tên
     categories = list(danh_muc.find({}))
@@ -48,32 +48,45 @@ def product_by_category(request, cat_id):
     try:
         oid = ObjectId(cat_id)
     except Exception:
-        return render(request, "shop/category.html", {
-            "products": [],
-            "error": "Mã danh mục không hợp lệ"
-        })
+        return render(request, "shop/category.html", {"products": [], "error": "Mã danh mục không hợp lệ"})
     products = list(san_pham.find({"danh_muc_id": oid}))
     for sp in products:
         sp["id"] = str(sp["_id"])
+        sp["ten"] = sp.get("ten") or sp.get("ten_san_pham") or "Sản phẩm"
+        sp["mo_ta"] = sp.get("mo_ta") or sp.get("mo_ta_ngan") or ""
+        imgs = sp.get("hinh_anh") or []
+        sp["hinh_anh"] = imgs if isinstance(imgs, list) else [imgs]
     return render(request, "shop/category.html", {"products": products})
 
-
 def add_to_cart(request, sp_id):
-    # TODO: lấy user thật từ session
-    user_id = "64f5b2..."  
+    user_str = request.session.get("user_id")
+    if not user_str:
+        return redirect("shop:shop_login")
     try:
-        sp = san_pham.find_one({"_id": ObjectId(sp_id)})
-        if not sp:
-            return redirect("sanpham_list")  # đổi lại name cho đúng
-        item = {
-            "tai_khoan_id": ObjectId(user_id),
-            "san_pham_id": sp["_id"],
-            "ngay_tao": datetime.now(),
-            "so_luong": 1,
-            "don_gia": sp["gia"],
-            "tong_tien": sp["gia"]
-        }
-        gio_hang.insert_one(item)
+        user_oid = ObjectId(user_str)
+        sp_oid = ObjectId(sp_id)
     except Exception:
-        pass
-    return redirect("sanpham_list")
+        return redirect("shop:sanpham_list")  # hoặc báo lỗi nhẹ
+
+    sp = san_pham.find_one({"_id": sp_oid}, {"gia":1})
+    if not sp:
+        return redirect("shop:sanpham_list")
+
+    existing = gio_hang.find_one({"tai_khoan_id": user_oid, "san_pham_id": sp_oid})
+    don_gia = int(sp.get("gia", 0))
+    if existing:
+        so_luong = int(existing.get("so_luong", 0)) + 1
+        gio_hang.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {"so_luong": so_luong, "don_gia": don_gia, "tong_tien": so_luong * don_gia}}
+        )
+    else:
+        gio_hang.insert_one({
+            "tai_khoan_id": user_oid,
+            "san_pham_id": sp_oid,
+            "ngay_tao": timezone.now(),
+            "so_luong": 1,
+            "don_gia": don_gia,
+            "tong_tien": don_gia
+        })
+    return redirect("shop:sanpham_list")

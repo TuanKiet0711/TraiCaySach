@@ -32,7 +32,13 @@
 
             <div class="mt-auto d-flex flex-column gap-2">
               <a href="#" class="btn btn-buy-now w-100">Mua ngay</a>
-              <a href="#" class="btn btn-add-cart w-100">Thêm vào giỏ</a>
+
+              <button type="button"
+                      class="btn btn-add-cart w-100"
+                      data-id="{{ sp.id }}"
+                      data-name="{{ sp.ten }}">
+                Thêm vào giỏ
+              </button>
             </div>
           </div>
         </div>
@@ -46,5 +52,41 @@
     </div>
   </div>
 </section>
+{% endblock %}
 
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.btn-add-cart').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const id = (btn.dataset.id || '').trim();
+      if (!id) return;
+
+      try {
+        const res = await fetch('/api/cart/items/', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ san_pham_id: id, so_luong: 1 })
+        });
+
+        if (res.status === 201) {
+          // Không hiện thông báo — chỉ cập nhật badge ở navbar
+          if (window.updateCartBadge) window.updateCartBadge();
+        } else if (res.status === 400 || res.status === 401) {
+          // Chưa login → chuyển tới trang đăng nhập
+          window.location.href = '{% url "shop:shop_login" %}';
+        } else {
+          // Lỗi khác: log console cho dev
+          let err = {};
+          try { err = await res.json(); } catch(e){}
+          console.error('Cart add error:', res.status, err);
+        }
+      } catch (ex) {
+        console.error('Fetch failed:', ex);
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

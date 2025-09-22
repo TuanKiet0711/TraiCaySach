@@ -1,0 +1,263 @@
+{% extends "shop/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Giỏ hàng{% endblock %}
+
+{% block content %}
+<section class="py-4">
+  <div class="container">
+    <h2 class="h4 mb-4"><i class="bi bi-bag me-2"></i>Giỏ hàng của bạn</h2>
+
+    <div id="cartEmpty" class="text-center text-muted py-5 d-none">
+      <i class="bi bi-cart-x fs-1 d-block mb-2" style="color:#2e7d32"></i>
+      Giỏ hàng trống. <a href="{% url 'shop:sanpham_list' %}" class="link-success">Mua sắm ngay</a>.
+    </div>
+
+    <div id="cartWrap" class="row g-4 d-none">
+      <!-- Bảng items -->
+      <div class="col-lg-8">
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:64px;"></th>
+                <th>Sản phẩm</th>
+                <th class="text-end">Đơn giá</th>
+                <th class="text-center" style="width:160px;">Số lượng</th>
+                <th class="text-end">Tạm tính</th>
+                <th class="text-end" style="width:56px;"></th>
+              </tr>
+            </thead>
+            <tbody id="cartBody">
+              <!-- JS render -->
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{% url 'shop:sanpham_list' %}" class="btn btn-outline-success">
+            <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
+          </a>
+          <button id="btnClearCart" class="btn btn-outline-danger ms-auto">
+            <i class="bi bi-trash"></i> Xóa toàn bộ giỏ
+          </button>
+        </div>
+      </div>
+
+      <!-- Tóm tắt -->
+      <div class="col-lg-4">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title">Tóm tắt đơn hàng</h5>
+            <div class="d-flex justify-content-between small text-muted">
+              <span>Số mặt hàng</span><span id="summaryCount">0</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-2">
+              <span>Tổng tạm tính</span><span id="summarySubtotal">0</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-semibold fs-5">
+              <span>Tổng cộng</span><span id="summaryTotal">0</span>
+            </div>
+            <button id="btnCheckout" class="btn btn-success w-100 mt-3" disabled>
+              <i class="bi bi-bag-check me-1"></i> Thanh toán
+            </button>
+            <div class="form-text mt-2">* Phí vận chuyển/tax (nếu có) sẽ được áp dụng ở bước sau.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Toast thông báo nhỏ (chỉ dùng khi cần báo lỗi / clear all / checkout demo) -->
+<div id="cartToast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
+  <div class="d-flex">
+    <div class="toast-body"></div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const money = (v) => {
+    try { v = Number(v||0); } catch(e) { v = 0; }
+    return v.toLocaleString('vi-VN') + ' VNĐ';
+  };
+
+  const toastEl = document.getElementById('cartToast');
+  function showToast(msg, isError=false) {
+    toastEl.classList.remove('bg-success','bg-danger');
+    toastEl.classList.add(isError ? 'bg-danger' : 'bg-success');
+    toastEl.querySelector('.toast-body').textContent = msg;
+    new bootstrap.Toast(toastEl, { delay: 2000 }).show();
+  }
+
+  const elEmpty = document.getElementById('cartEmpty');
+  const elWrap  = document.getElementById('cartWrap');
+  const elBody  = document.getElementById('cartBody');
+  const sumCount = document.getElementById('summaryCount');
+  const sumSubtotal = document.getElementById('summarySubtotal');
+  const sumTotal = document.getElementById('summaryTotal');
+  const btnClear = document.getElementById('btnClearCart');
+  const btnCheckout = document.getElementById('btnCheckout');
+
+  // Load giỏ
+  async function loadCart() {
+    const res = await fetch('/api/cart?include_product=1', { method: 'GET' });
+    if (res.status === 400 || res.status === 401) {
+      elWrap.classList.add('d-none');
+      elEmpty.classList.remove('d-none');
+      return;
+    }
+    const data = await res.json();
+    renderCart(data.items || [], data.tong_tien || 0);
+    // sau khi render, cập nhật badge theo count mới
+    if (window.updateCartBadge) window.updateCartBadge((data.items || []).length);
+  }
+
+  function renderCart(items, total) {
+    elBody.innerHTML = '';
+    if (!items.length) {
+      elWrap.classList.add('d-none');
+      elEmpty.classList.remove('d-none');
+      sumCount.textContent = '0';
+      sumSubtotal.textContent = '0';
+      sumTotal.textContent = '0';
+      btnCheckout.disabled = true;
+      return;
+    }
+    elEmpty.classList.add('d-none');
+    elWrap.classList.remove('d-none');
+
+    let subtotal = 0;
+    items.forEach(item => {
+      subtotal += (item.tong_tien || 0);
+      const sp = item.san_pham || {};
+      const img = (sp.hinh_anh && sp.hinh_anh.length) ? sp.hinh_anh[0] : '';
+      const tr = document.createElement('tr');
+      tr.dataset.id = item.id;
+
+      tr.innerHTML = `
+        <td>
+          <img src="{{ MEDIA_URL }}${img}" alt="${sp.ten_san_pham || ''}" class="rounded" style="width:56px;height:56px;object-fit:cover;">
+        </td>
+        <td>
+          <div class="fw-semibold">${sp.ten_san_pham || '(Sản phẩm)'}</div>
+          <div class="text-muted small">Mã: ${sp.id || item.san_pham_id}</div>
+        </td>
+        <td class="text-end">${money(item.don_gia)}</td>
+        <td class="text-center">
+          <div class="input-group input-group-sm justify-content-center" style="max-width: 160px; margin: 0 auto;">
+            <button class="btn btn-outline-success btn-dec" type="button"><i class="bi bi-dash"></i></button>
+            <input type="number" min="1" class="form-control text-center qty-input" value="${item.so_luong}" style="max-width:80px;">
+            <button class="btn btn-outline-success btn-inc" type="button"><i class="bi bi-plus"></i></button>
+          </div>
+        </td>
+        <td class="text-end fw-semibold subtotal">${money(item.tong_tien)}</td>
+        <td class="text-end">
+          <button class="btn btn-outline-danger btn-sm btn-remove" title="Xóa"><i class="bi bi-x-lg"></i></button>
+        </td>
+      `;
+      elBody.appendChild(tr);
+    });
+
+    sumCount.textContent = String(items.length);
+    sumSubtotal.textContent = money(subtotal);
+    sumTotal.textContent = money(subtotal);
+    btnCheckout.disabled = false;
+  }
+
+  // Delegation: +/- , đổi qty, xóa
+  elBody.addEventListener('click', async (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const id = tr.dataset.id;
+    const qtyInput = tr.querySelector('.qty-input');
+
+    if (e.target.closest('.btn-inc')) {
+      const newQty = Number(qtyInput.value || 1) + 1;
+      await updateQuantity(id, newQty);
+    }
+    if (e.target.closest('.btn-dec')) {
+      const newQty = Math.max(1, Number(qtyInput.value || 1) - 1);
+      await updateQuantity(id, newQty);
+    }
+    if (e.target.closest('.btn-remove')) {
+      await removeItem(id);
+    }
+  });
+
+  elBody.addEventListener('change', async (e) => {
+    if (e.target.classList.contains('qty-input')) {
+      const tr = e.target.closest('tr'); if (!tr) return;
+      const id = tr.dataset.id;
+      const val = Math.max(1, Number(e.target.value || 1));
+      await updateQuantity(id, val);
+    }
+  });
+
+  // Clear cart – ẩn badge ngay lập tức
+  btnClear.addEventListener('click', async () => {
+    if (!confirm('Bạn chắc muốn xóa toàn bộ giỏ hàng?')) return;
+    // Ẩn badge ngay (không chờ API/Reload)
+    if (window.hideCartBadge) window.hideCartBadge();
+
+    const res = await fetch('/api/cart/clear/', { method: 'DELETE' });
+    if (res.ok) {
+      // Im lặng phần badge rồi, chỉ render lại list
+      loadCart();
+    } else {
+      const err = await safeJson(res);
+      showToast('Không thể xóa giỏ hàng' + (err.error ? (': ' + err.error) : ''), true);
+      // Nếu lỗi, refresh lại badge từ server để không bị sai
+      if (window.refreshCartBadge) window.refreshCartBadge();
+    }
+  });
+
+  // ====== Silent update/delete (chỉ báo lỗi khi cần) ======
+  async function updateQuantity(id, qty) {
+    const res = await fetch(`/api/cart/items/${id}/`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ so_luong: qty })
+    });
+    if (res.status === 204) {
+      return loadCart();
+    }
+    if (!res.ok) {
+      const err = await safeJson(res);
+      showToast('Lỗi: ' + (err.error || res.status), true);
+      return;
+    }
+    loadCart();
+  }
+
+  async function removeItem(id) {
+    const res = await fetch(`/api/cart/items/${id}/delete/`, { method: 'DELETE' });
+    if (res.status === 204) {
+      loadCart();
+    } else {
+      const err = await safeJson(res);
+      showToast('Lỗi: ' + (err.error || res.status), true);
+    }
+  }
+  // ================================================
+
+  async function safeJson(res) {
+    try { return await res.json(); } catch(e) { return {}; }
+  }
+
+  // (Optional) Checkout demo
+  document.getElementById('btnCheckout').addEventListener('click', () => {
+    // window.location.href = '/checkout/'; // khi bạn tạo route
+    showToast('Đi tới bước thanh toán...');
+  });
+
+  // init
+  loadCart();
+})();
+</script>
+{% endblock %}
