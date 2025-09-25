@@ -1,5 +1,4 @@
 # shop/views/tai_khoan_view.py
-# shop/views/tai_khoan_view.py
 from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -19,26 +18,34 @@ def _json_required(request):
         return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
     return None
 
-def _safe_user(doc):
+def _safe_user(doc, include_password=False):
     if not doc:
         return None
-    return {
+    data = {
         "id": str(doc["_id"]),
         "ho_ten": doc.get("ho_ten", ""),
         "email": doc.get("email", ""),
         "sdt": doc.get("sdt", ""),
         "vai_tro": doc.get("vai_tro", "")
     }
+    if include_password:
+        data["mat_khau"] = doc.get("mat_khau", "")
+    return data
 
 # ===================== LIST =====================
 
 @require_http_methods(["GET"])
 def accounts_list(request):
     """
-    GET /api/accounts/?q=&vai_tro=&page=&page_size=
+    GET /api/accounts/?q=&vai_tro=&page=&page_size=&include_password=1
     """
     q = (request.GET.get("q") or "").strip()
     role = (request.GET.get("vai_tro") or "").strip()
+
+    # chỉ admin + include_password=1 mới thấy mật khẩu
+    want_pwd = (request.GET.get("include_password") in ("1", "true", "yes"))
+    is_admin = (request.session.get("user_role") == "admin")
+    include_password = bool(want_pwd and is_admin)
 
     try:
         page = max(int(request.GET.get("page", 1)), 1)
@@ -66,12 +73,16 @@ def accounts_list(request):
     total = tai_khoan.count_documents(filter_)
     skip = (page - 1) * page_size
 
-    cursor = (tai_khoan.find(filter_, {"ho_ten": 1, "email": 1, "sdt": 1, "vai_tro": 1})
+    proj = {"ho_ten": 1, "email": 1, "sdt": 1, "vai_tro": 1}
+    if include_password:
+        proj["mat_khau"] = 1
+
+    cursor = (tai_khoan.find(filter_, proj)
                         .sort("ho_ten", 1)
                         .skip(skip)
                         .limit(page_size))
 
-    items = [_safe_user(u) for u in cursor]
+    items = [_safe_user(u, include_password) for u in cursor]
 
     return JsonResponse({
         "items": items,
@@ -119,7 +130,7 @@ def accounts_create(request):
         "vai_tro": vai_tro
     })
     created = tai_khoan.find_one({"_id": res.inserted_id})
-    return JsonResponse(_safe_user(created), status=201)
+    return JsonResponse(_safe_user(created, include_password=False), status=201)
 
 # ===================== DETAIL (GET/PUT/DELETE) =====================
 
@@ -136,10 +147,11 @@ def account_detail(request, id):
         return JsonResponse({"error": "Invalid id"}, status=400)
 
     if request.method == "GET":
+        # không trả mật khẩu ở API detail
         acc = tai_khoan.find_one({"_id": oid})
         if not acc:
             return JsonResponse({"error": "Not found"}, status=404)
-        return JsonResponse(_safe_user(acc))
+        return JsonResponse(_safe_user(acc, include_password=False))
 
     elif request.method == "PUT":
         err = _json_required(request)
@@ -174,7 +186,7 @@ def account_detail(request, id):
             return JsonResponse({"error": "Not found"}, status=404)
 
         acc = tai_khoan.find_one({"_id": oid})
-        return JsonResponse(_safe_user(acc))
+        return JsonResponse(_safe_user(acc, include_password=False))
 
     elif request.method == "DELETE":
         deleted = tai_khoan.delete_one({"_id": oid})
@@ -218,7 +230,6 @@ def auth_register(request):
     sdt    = (body.get("sdt") or "").strip()
     mat_khau = (body.get("mat_khau") or "").strip()   # không mã hoá
 
-    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     if not ho_ten or not email or not mat_khau:
         return JsonResponse({"error": "Thiếu ho_ten / email / mat_khau"}, status=400)
     if not EMAIL_RE.match(email):
@@ -241,7 +252,7 @@ def auth_register(request):
     request.session["user_name"] = user.get("ho_ten", "")
     request.session["user_role"] = user.get("vai_tro", "customer")
 
-    return JsonResponse({"user": _safe_user(user)}, status=201)
+    return JsonResponse({"user": _safe_user(user, include_password=False)}, status=201)
 
 
 @csrf_exempt
@@ -274,7 +285,7 @@ def auth_login(request):
     request.session["user_name"] = user.get("ho_ten", "")
     request.session["user_role"] = user.get("vai_tro", "customer")
 
-    return JsonResponse({"user": _safe_user(user)})
+    return JsonResponse({"user": _safe_user(user, include_password=False)})
 
 
 @csrf_exempt
@@ -294,4 +305,4 @@ def auth_me(request):
     except Exception:
         return JsonResponse({"user": None})
     user = tai_khoan.find_one({"_id": oid})
-    return JsonResponse({"user": _safe_user(user) if user else None})
+    return JsonResponse({"user": _safe_user(user, include_password=False) if user else None})

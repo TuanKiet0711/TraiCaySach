@@ -53,84 +53,91 @@
 {% endblock %}
 
 {% block extra_js %}
-  <script>
-    ;(async function () {
-      const id = '{{ product_id }}'
-    
-      function getCookie(name) {
-        let v = null
-        if (document.cookie)
-          for (let c of document.cookie.split(';')) {
-            c = c.trim()
-            if (c.startsWith(name + '=')) {
-              v = decodeURIComponent(c.split('=')[1])
-              break
-            }
-          }
-        return v
+<script>
+;(async function () {
+  const id = '{{ product_id }}'
+
+  function getCookie(name) {
+    let v = null
+    if (document.cookie)
+      for (let c of document.cookie.split(';')) {
+        c = c.trim()
+        if (c.startsWith(name + '=')) {
+          v = decodeURIComponent(c.split('=')[1])
+          break
+        }
       }
-      const CSRF = getCookie('csrftoken')
-    
-      // nạp dữ liệu hiện tại
-      const res = await fetch(`/api/products/${id}/`)
-      if (!res.ok) {
-        alert('Không tìm thấy sản phẩm')
-        window.location = "{% url 'shop:admin_products' %}"
-        return
-      }
-      const cur = await res.json()
-      document.getElementById('ten').value = cur.ten_san_pham || ''
-      document.getElementById('mo_ta').value = cur.mo_ta || ''
-      document.getElementById('gia').value = cur.gia || 0
-      document.getElementById('hinh_anh').value = cur.hinh_anh && cur.hinh_anh.length > 0 ? cur.hinh_anh[0] : ''
-    
-      if (cur.hinh_anh && cur.hinh_anh.length > 0) {
-        const preview = document.getElementById('preview_img')
-        preview.src = '/media/' + cur.hinh_anh[0] // luôn thêm /media/
-        preview.style.display = 'block'
-      } else {
-        document.getElementById('preview_img').style.display = 'none'
-      }
-    
-      // submit PUT
-      document.getElementById('editForm').addEventListener('submit', async (e) => {
-        e.preventDefault()
-        const payload = {
-          ten_san_pham: document.getElementById('ten').value.trim(),
-          mo_ta: document.getElementById('mo_ta').value.trim(),
-          gia: parseInt(document.getElementById('gia').value, 10) || 0,
-          hinh_anh: document.getElementById('hinh_anh').value.trim() ? [document.getElementById('hinh_anh').value.trim()] : [],
-          danh_muc_id: document.getElementById('danh_muc').value
-        }
-        if (!payload.ten_san_pham || !payload.danh_muc_id) {
-          alert('Vui lòng nhập đủ thông tin')
-          return
-        }
-    
-        const r = await fetch(`/api/products/${id}/`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-          body: JSON.stringify(payload)
-        })
-        if (r.ok) {
-          window.location = "{% url 'shop:admin_products' %}"
-        } else {
-          const err = await r.json().catch(() => ({}))
-          alert(err.error || 'Lưu thất bại')
-        }
-      })
-    
-      // preview khi người dùng gõ vào ô input
-      document.getElementById('hinh_anh').addEventListener('input', function () {
-        const val = this.value.trim()
-        const preview = document.getElementById('preview_img')
-        if (val) {
-          preview.src = '/media/' + val
-          preview.style.display = 'block'
-        } else {
-          preview.style.display = 'none'
-        }
-      })
-    })()
-  </script>
+    return v
+  }
+  const CSRF = getCookie('csrftoken')
+
+  // nạp dữ liệu hiện tại
+  const res = await fetch(`/api/products/${id}/`)
+  if (!res.ok) {
+    alert('Không tìm thấy sản phẩm')
+    window.location = "{% url 'shop:admin_products' %}"
+    return
+  }
+  const cur = await res.json()
+
+  document.getElementById('ten').value = cur.ten_san_pham || ''
+  document.getElementById('mo_ta').value = cur.mo_ta || ''
+  document.getElementById('gia').value = cur.gia || 0
+  document.getElementById('hinh_anh').value =
+    cur.hinh_anh && cur.hinh_anh.length > 0 ? cur.hinh_anh[0] : ''
+
+  // 🟢 thêm dòng này để giữ danh mục đã chọn
+  document.getElementById('danh_muc').value = cur.danh_muc_id || ''
+
+  if (cur.hinh_anh && cur.hinh_anh.length > 0) {
+    const preview = document.getElementById('preview_img')
+    preview.src = '/media/' + cur.hinh_anh[0] // luôn thêm /media/
+    preview.style.display = 'block'
+  } else {
+    document.getElementById('preview_img').style.display = 'none'
+  }
+
+  // submit PUT
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const payload = {
+      ten_san_pham: document.getElementById('ten').value.trim(),
+      mo_ta: document.getElementById('mo_ta').value.trim(),
+      gia: parseInt(document.getElementById('gia').value, 10) || 0,
+      hinh_anh: document.getElementById('hinh_anh').value.trim()
+        ? [document.getElementById('hinh_anh').value.trim()]
+        : [],
+      danh_muc_id: document.getElementById('danh_muc').value
+    }
+    if (!payload.ten_san_pham || !payload.danh_muc_id) {
+      alert('Vui lòng nhập đủ thông tin')
+      return
+    }
+
+    const r = await fetch(`/api/products/${id}/`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify(payload)
+    })
+    if (r.ok) {
+      window.location = "{% url 'shop:admin_products' %}"
+    } else {
+      const err = await r.json().catch(() => ({}))
+      alert(err.error || 'Lưu thất bại')
+    }
+  })
+
+  // preview khi người dùng gõ vào ô input
+  document.getElementById('hinh_anh').addEventListener('input', function () {
+    const val = this.value.trim()
+    const preview = document.getElementById('preview_img')
+    if (val) {
+      preview.src = '/media/' + val
+      preview.style.display = 'block'
+    } else {
+      preview.style.display = 'none'
+    }
+  })
+})()
+</script>
 {% endblock %}

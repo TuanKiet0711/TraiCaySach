@@ -1,0 +1,61 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Thêm tài khoản{% endblock %}
+{% block page_title %}Thêm tài khoản{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <form id="formCreateAcc">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Họ tên</label>
+      <input type="text" name="ho_ten" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">SĐT</label>
+      <input type="text" name="sdt" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Mật khẩu</label>
+      <input type="text" name="mat_khau" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Vai trò</label>
+      <select name="vai_tro" class="form-select">
+        <option value="customer">Customer</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Lưu</button>
+    <a href="{% url 'shop:admin_accounts' %}" class="btn btn-secondary">Hủy</a>
+  </form>
+</div>
+
+<script>
+document.getElementById('formCreateAcc').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const form=e.target;
+  const body={
+    ho_ten:form.ho_ten.value,
+    email:form.email.value,
+    sdt:form.sdt.value,
+    mat_khau:form.mat_khau.value,
+    vai_tro:form.vai_tro.value
+  };
+  const res=await fetch('/api/accounts/create/',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(res.ok){
+    window.location.href="{% url 'shop:admin_accounts' %}";
+  }else{
+    const data=await res.json();
+    alert(data.error||'Lỗi tạo tài khoản');
+  }
+});
+</script>
+{% endblock %}

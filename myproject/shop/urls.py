@@ -75,4 +75,9 @@ urlpatterns = [
     path("admin-panel/categories/create/", av.category_create, name="admin_category_create"),
     path("admin-panel/categories/<str:id>/edit/", av.category_edit, name="admin_category_edit"),
     path("admin-panel/categories/<str:id>/delete/", av.category_delete, name="admin_category_delete"),
+    
+    path("admin-panel/accounts/", av.accounts_list_page, name="admin_accounts"),
+    path("admin-panel/accounts/create/", av.account_create, name="admin_account_create"),
+    path("admin-panel/accounts/<str:id>/edit/", av.account_edit, name="admin_account_edit"),
+    path("admin-panel/accounts/<str:id>/delete/", av.account_delete, name="admin_account_delete"),
 ]

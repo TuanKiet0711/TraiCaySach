@@ -1,0 +1,74 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Sửa tài khoản{% endblock %}
+{% block page_title %}Sửa tài khoản{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <form id="formEditAcc">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Họ tên</label>
+      <input type="text" name="ho_ten" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">SĐT</label>
+      <input type="text" name="sdt" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Mật khẩu (để trống nếu không đổi)</label>
+      <input type="text" name="mat_khau" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Vai trò</label>
+      <select name="vai_tro" class="form-select">
+        <option value="customer">Customer</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Cập nhật</button>
+    <a href="{% url 'shop:admin_accounts' %}" class="btn btn-secondary">Hủy</a>
+  </form>
+</div>
+
+<script>
+(async ()=>{
+  // load dữ liệu ban đầu
+  const res=await fetch(`/api/accounts/{{ account_id }}/`);
+  if(res.ok){
+    const data=await res.json();
+    document.querySelector('[name=ho_ten]').value=data.ho_ten||'';
+    document.querySelector('[name=email]').value=data.email||'';
+    document.querySelector('[name=sdt]').value=data.sdt||'';
+    document.querySelector('[name=vai_tro]').value=data.vai_tro||'customer';
+  }else{
+    alert('Không tải được dữ liệu');
+  }
+})();
+document.getElementById('formEditAcc').addEventListener('submit',async(e)=>{
+  e.preventDefault();
+  const f=e.target;
+  const body={
+    ho_ten:f.ho_ten.value,
+    email:f.email.value,
+    sdt:f.sdt.value,
+    vai_tro:f.vai_tro.value
+  };
+  if(f.mat_khau.value.trim())body.mat_khau=f.mat_khau.value.trim();
+  const res=await fetch(`/api/accounts/{{ account_id }}/`,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(res.ok){
+    window.location.href="{% url 'shop:admin_accounts' %}";
+  }else{
+    const data=await res.json();
+    alert(data.error||'Lỗi cập nhật');
+  }
+});
+</script>
+{% endblock %}

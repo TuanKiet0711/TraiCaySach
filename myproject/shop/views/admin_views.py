@@ -5,7 +5,7 @@ from math import ceil
 from bson import ObjectId
 from .admin_required import admin_required  # ✅ thêm
 
-PAGE_SIZE = 10
+PAGE_SIZE = 6
 
 # =================== DASHBOARD =================== #
 @admin_required
@@ -160,3 +160,32 @@ def product_edit(request, id: str):
 @admin_required
 def product_delete(request, id: str):
     return render(request, "shop/admin/products_delete.html", {"product_id": id})
+
+@admin_required
+def accounts_list_page(request):
+    q = (request.GET.get("q") or "").strip()
+    vai_tro = (request.GET.get("vai_tro") or "").strip()
+    page = int(request.GET.get("page", 1) or 1)
+    page_size = int(request.GET.get("page_size", 10) or 10)
+
+    return render(request, "shop/admin/accounts_list.html", {
+        "q": q,
+        "vai_tro": vai_tro,
+        "page": page,
+        "page_size": page_size,
+        "page_sizes": [10, 20, 50, 100],   # <- thêm dòng này
+    })
+@admin_required
+def account_create(request):
+    # Chỉ render form, submit gọi API /api/accounts/create/
+    return render(request, "shop/admin/account_create.html")
+
+@admin_required
+def account_edit(request, id: str):
+    # Chỉ render form, submit gọi API PUT /api/accounts/<id>/
+    return render(request, "shop/admin/account_edit.html", {"account_id": id})
+
+@admin_required
+def account_delete(request, id: str):
+    # Xác nhận xóa, submit gọi API DELETE /api/accounts/<id>/
+    return render(request, "shop/admin/account_delete.html", {"account_id": id})

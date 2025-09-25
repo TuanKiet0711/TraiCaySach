@@ -55,7 +55,7 @@
       <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}"
         href="{% url 'shop:admin_categories' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}"
-         href="{% url 'shop:admin_categories' %}"><i class="bi bi-people me-2"></i>Tài khoản</a>
+         href="{% url 'shop:admin_accounts' %}"><i class="bi bi-people me-2"></i>Tài khoản</a>
 
       <hr class="border-light">
       <a class="btn" href="{% url 'shop:home' %}"><i class="bi bi-house me-2"></i>Về trang khách</a>

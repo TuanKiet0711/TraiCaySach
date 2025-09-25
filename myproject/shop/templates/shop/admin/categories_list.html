@@ -4,95 +4,91 @@
 
 {% block content %}
 <style>
-  /* Ẩn scroll toàn trang */
   html, body {height: 100%; overflow: hidden;}
+  .admin-fixed {height: calc(100vh - 0px); display: flex; flex-direction: column; overflow: hidden;}
+  .toolbar-tight {margin-bottom:.5rem!important;}
+  .card-body-tight {padding:.5rem 1rem!important;}
+  .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
 
-  /* Container chính chiếm hết viewport */
-  .admin-fixed {
-    height: calc(100vh - 0px); /* nếu có header cố định 56px thì đổi thành -56px */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  /* Search bar đẹp */
+  .searchbar { --h: 38px; flex:1 1 auto; }
+  .searchbar .inputbox {position:relative;flex:1 1 auto;min-width:300px;}
+  .searchbar .inputbox .icon {
+    position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    opacity:.65; color:#6c757d;
   }
+  .searchbar .inputbox input.form-control {
+    height:var(--h); padding-left:38px; padding-right:40px;
+    border-radius:12px; border:1px solid rgba(0,0,0,.08);
+    box-shadow:0 6px 18px rgba(30,60,120,.06);
+  }
+  .searchbar .inputbox .btn-clear {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    border:none; background:transparent; opacity:.5;
+  }
+  .searchbar .btn-find {
+    height:var(--h);
+    background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
+    color:#fff; border:none; font-weight:600; border-radius:12px;
+    padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);
+    transition:transform .08s ease,filter .2s ease;
+  }
+  .searchbar .btn-find:hover {filter:brightness(1.04);transform:translateY(-1px);}
+  .btn-reset {border-radius:12px;height:var(--h);margin-left:8px;}
 
-  /* Thu nhỏ toolbar để đẩy bảng lên */
-  .toolbar-tight {margin-bottom: .5rem!important;}
-  .card-body-tight {padding: .5rem 1rem!important;}
-
-  /* Bảng chiếm phần còn lại, không sinh scroll riêng */
-  .table-flex {flex: 1 1 auto; min-height: 0; overflow: hidden;}
-
-  /* Phân trang cố định ở góc dưới */
+  /* Pagination cố định */
   .pagination-fixed {
-    position: fixed;
-    right: 16px;
-    bottom: 12px;
-    z-index: 1050;
-    background: #fff;
-    border: 1px solid rgba(0,0,0,.1);
-    border-radius: .5rem;
-    padding: .25rem .5rem;
-    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    position:sticky; /* dính dưới phần card-body */
+    bottom:0;
+    background:#fff; border-top:1px solid rgba(0,0,0,.05);
+    padding:.5rem .75rem;
+    display:flex; justify-content:flex-start;
   }
-  /* --- Tút lại thanh tìm kiếm --- */
-.searchbar .input-group {
-  border-radius: 10px;
-  overflow: hidden;               /* bo góc đồng nhất */
-  box-shadow: 0 4px 14px rgba(30,60,120,.06);
-}
-.searchbar .form-control {
-  border-radius: 10px 0 0 10px;   /* bo bên trái */
-  padding-left: 38px;             /* chừa chỗ icon */
-}
-.searchbar .icon {
-  position: absolute;
-  left: 12px; top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d; opacity: .65;
-  pointer-events: none;
-}
-
-/* Nút Tìm đẹp xíu */
-.btn-find {
-  background: linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
-  color:#fff; border:none;
-  font-weight:600;
-  border-radius: 0 10px 10px 0;   /* khớp với ô input */
-  padding: .35rem .75rem;
-  box-shadow: 0 8px 16px rgba(60,120,240,.18);
-  transition: transform .08s ease, filter .2s ease;
-}
-.btn-find:hover { filter: brightness(1.04); transform: translateY(-1px); }
-.btn-find:active { transform: none; filter: brightness(.98); }
-
-/* Nút Xóa lọc để rời khỏi input-group, bo đẹp */
-.btn-reset { border-radius: 10px; margin-left: 8px; }
-
+  .pagination-fixed .pagination {gap: 4px; margin-bottom:0;}
+  .pagination-fixed .page-link {
+    min-width: 34px; height: 34px; padding: 0.25rem 0.6rem;
+    text-align: center; line-height: 1.5;
+    border-radius: 50% !important; color: #495057;
+    border: none; background: #f8f9fa;
+    box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    transition: all .2s ease;
+  }
+  .pagination-fixed .page-link:hover {
+    background: #4f8cff; color: #fff;
+  }
+  .pagination-fixed .page-item.active .page-link {
+    background: #3b78ff; color: #fff;
+    box-shadow: 0 4px 12px rgba(60,120,240,.25);
+  }
+  .pagination-fixed .page-item.disabled .page-link {
+    opacity: .5; pointer-events: none; background: #f1f1f1;
+  }
 </style>
 
 <div class="admin-fixed">
 
-  <!-- Thanh tìm kiếm + thêm danh mục -->
+  <!-- Thanh tìm kiếm + nút thêm -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
-  <form class="d-flex searchbar" method="get" action="" style="min-width:420px">
-    <div class="input-group input-group-sm position-relative">
-      <i class="bi bi-search icon"></i>
-      <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control"
-             placeholder="Tìm theo tên danh mục…">
+    <form id="searchForm" class="d-flex searchbar" method="get" action="" style="min-width:420px">
+      <div class="inputbox">
+        <i class="bi bi-search icon"></i>
+        <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}"
+               class="form-control" placeholder="Tìm theo tên danh mục…">
+        <button type="button" class="btn-clear d-none" id="btnClear" aria-label="Xóa tìm">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
       <button class="btn btn-find" type="submit">
         <i class="bi bi-funnel me-1"></i>Tìm
       </button>
-      <a class="btn btn-light btn-sm btn-reset" href="{% url 'shop:admin_categories' %}">
+      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_categories' %}">
         <i class="bi bi-x-circle me-1"></i>Xóa lọc
       </a>
-    </div>
-  </form>
+    </form>
+    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_category_create' %}">+ Thêm danh mục</a>
+  </div>
 
-  <a class="btn btn-success btn-sm" href="{% url 'shop:admin_category_create' %}">+ Thêm danh mục</a>
-</div>
-
-
-  <!-- Thẻ card chứa bảng -->
+  <!-- Bảng danh mục -->
   <div class="card shadow-sm table-flex">
     <div class="card-body card-body-tight">
       <div class="table-responsive">
@@ -132,30 +128,46 @@
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
 
-  <!-- Phân trang nổi cố định -->
-  <div class="pagination-fixed">
-    <div class="text-muted small mb-1">
-      Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
+      <!-- Phân trang cố định -->
+      <div class="pagination-fixed w-100">
+        <div class="me-3 text-muted small">
+          Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
+        </div>
+        <nav aria-label="Pagination">
+          <ul class="pagination mb-0">
+            <li class="page-item {% if not has_prev %}disabled{% endif %}">
+              <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">‹</a>
+            </li>
+            {% for p in page_numbers %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
+              </li>
+            {% endfor %}
+            <li class="page-item {% if not has_next %}disabled{% endif %}">
+              <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">›</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
     </div>
-    <nav aria-label="Pagination">
-      <ul class="pagination mb-0">
-        <li class="page-item {% if not has_prev %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Trước</a>
-        </li>
-        {% for p in page_numbers %}
-          <li class="page-item {% if p == page %}active{% endif %}">
-            <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
-          </li>
-        {% endfor %}
-        <li class="page-item {% if not has_next %}disabled{% endif %}">
-          <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">Sau</a>
-        </li>
-      </ul>
-    </nav>
   </div>
 
 </div>
+
+<script>
+(function(){
+  const qInput=document.getElementById('qInput');
+  const btnClear=document.getElementById('btnClear');
+  const form=document.getElementById('searchForm');
+  function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
+  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();});
+  qInput.addEventListener('input',toggleClear);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
+  });
+  toggleClear();
+})();
+</script>
 {% endblock %}

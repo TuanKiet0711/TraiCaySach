@@ -1,0 +1,188 @@
+{% extends "shop/admin/base_admin.html" %}
+{% load static %}
+{% block title %}Tài khoản · Admin{% endblock %}
+{% block page_title %}Tài khoản{% endblock %}
+{% block content %}
+<style>
+html,body{height:100%;overflow:hidden;}
+.admin-fixed{height:calc(100vh - 0px);display:flex;flex-direction:column;overflow:hidden;}
+.toolbar-tight{margin-bottom:.5rem!important;}
+.card-body-tight{padding:.5rem 1rem!important;}
+.table-flex{flex:1 1 auto;min-height:0;overflow:hidden;}
+.searchbar{--h:38px;}
+.searchbar .wrap{display:flex;gap:8px;width:100%;flex-wrap:wrap;}
+.searchbar .inputbox{position:relative;flex:1 1 auto;min-width:300px;}
+.searchbar .inputbox .icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.65;}
+.searchbar .inputbox input.form-control{height:var(--h);padding-left:38px;padding-right:72px;border-radius:12px;border:1px solid rgba(0,0,0,.08);box-shadow:0 6px 18px rgba(30,60,120,.06);}
+.searchbar .inputbox .btn-clear{position:absolute;right:44px;top:50%;transform:translateY(-50%);border:none;background:transparent;opacity:.5;}
+.searchbar .btn-find{height:var(--h);background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);color:#fff;border:none;font-weight:600;border-radius:12px;padding:.35rem .9rem;box-shadow:0 8px 16px rgba(60,120,240,.18);transition:transform .08s ease,filter .2s ease;}
+.searchbar .btn-find:hover{filter:brightness(1.04);transform:translateY(-1px);}
+.role-pills{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.role-pills .pill{height:var(--h);border-radius:999px;padding:0 .9rem;font-weight:600;border:1px solid rgba(0,0,0,.08);background:#fff;box-shadow:0 6px 18px rgba(30,60,120,.04);}
+.role-pills .pill.active{color:#fff;background:#0d6efd;border-color:#0d6efd;box-shadow:0 8px 16px rgba(13,110,253,.25);}
+.pagination-fixed{position:sticky;bottom:0;background:#fff;border-top:1px solid rgba(0,0,0,.05);padding:.5rem .75rem;display:flex;justify-content:flex-start;align-items:center;}
+.pagination-fixed .pagination{gap:4px;margin-bottom:0;}
+.pagination-fixed .page-link{min-width:34px;height:34px;padding:0.25rem 0.6rem;text-align:center;line-height:1.5;border-radius:50%!important;color:#495057;border:none;background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,.05);transition:all .2s ease;}
+.pagination-fixed .page-link:hover{background:#4f8cff;color:#fff;}
+.pagination-fixed .page-item.active .page-link{background:#3b78ff;color:#fff;box-shadow:0 4px 12px rgba(60,120,240,.25);}
+.pagination-fixed .page-item.disabled .page-link{opacity:.5;pointer-events:none;background:#f1f1f1;}
+</style>
+
+<div class="admin-fixed">
+
+  <div class="d-flex flex-column gap-2 toolbar-tight">
+    <form id="searchForm" class="searchbar" method="get" action="">
+      <div class="wrap">
+        <div class="inputbox">
+          <i class="bi bi-search icon"></i>
+          <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Tìm họ tên, email, SĐT…">
+          <button type="button" class="btn-clear d-none" id="btnClear"><i class="bi bi-x-circle"></i></button>
+        </div>
+        <input type="hidden" name="vai_tro" id="roleInput" value="{{ vai_tro|default_if_none:'' }}">
+        <div class="role-pills">
+          <button type="button" class="pill {% if not vai_tro %}active{% endif %}" data-role="">Tất cả</button>
+          <button type="button" class="pill {% if vai_tro == 'admin' %}active{% endif %}" data-role="admin">Admin</button>
+          <button type="button" class="pill {% if vai_tro == 'customer' %}active{% endif %}" data-role="customer">Customer</button>
+          <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Tìm</button>
+          <a class="btn btn-light" style="height:var(--h);border-radius:12px" href="{% url 'shop:admin_accounts' %}"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
+          <a class="btn btn-success btn-sm" href="{% url 'shop:admin_account_create' %}" style="height:var(--h);border-radius:12px;line-height:1.8">+ Thêm tài khoản</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card shadow-sm table-flex">
+    <div class="card-body card-body-tight">
+      <div class="table-responsive" style="max-height:100%;overflow:auto">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:5%">#</th>
+              <th style="width:20%">Họ tên</th>
+              <th style="width:22%">Email</th>
+              <th style="width:13%">SĐT</th>
+              <th style="width:18%">Mật khẩu</th>
+              <th style="width:10%">Vai trò</th>
+              <th class="text-end" style="width:12%">Hành động</th>
+            </tr>
+          </thead>
+          <tbody id="accountsBody">
+            <tr><td colspan="7" class="text-center text-muted py-4">Đang tải…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination-fixed w-100" id="pagerWrap" style="display:none">
+        <div class="me-3 text-muted small" id="pagerInfo">Trang 1 / 1 • Tổng 0 mục</div>
+        <nav aria-label="Pagination"><ul class="pagination mb-0" id="pagerUl"></ul></nav>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const form=document.getElementById('searchForm');
+  const qInput=document.getElementById('qInput');
+  const btnClear=document.getElementById('btnClear');
+  const roleInput=document.getElementById('roleInput');
+  const pills=document.querySelectorAll('.role-pills .pill');
+  function debounce(fn,ms){let t;return(...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),ms)};}
+  const submitDebounce=debounce(()=>form.requestSubmit(),350);
+  function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
+  pills.forEach(p=>{
+    p.addEventListener('click',()=>{
+      pills.forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+      roleInput.value=p.dataset.role||'';
+      form.requestSubmit();
+    });
+  });
+  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.requestSubmit();});
+  qInput.addEventListener('input',()=>{toggleClear();submitDebounce();});
+  document.addEventListener('keydown',(e)=>{
+    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
+  });
+  toggleClear();
+})();
+</script>
+
+<script>
+(function() {
+  const qs = new URLSearchParams(window.location.search);
+  const q = qs.get('q') || '';
+  const vai_tro = qs.get('vai_tro') || '';
+  const page = parseInt(qs.get('page') || '{{ page|default:1 }}');
+  const page_size = parseInt(qs.get('page_size') || '{{ page_size|default:10 }}');
+  const tbody = document.getElementById('accountsBody');
+  const pagerWrap = document.getElementById('pagerWrap');
+  const pagerUl = document.getElementById('pagerUl');
+  const pagerInfo = document.getElementById('pagerInfo');
+  function badgeRole(r){return r==='admin'
+    ?'<span class="badge bg-danger">admin</span>'
+    :'<span class="badge bg-secondary">customer</span>';}
+  function buildUrl(p){
+    const u=new URL(window.location.href);
+    if(q)u.searchParams.set('q',q);else u.searchParams.delete('q');
+    if(vai_tro)u.searchParams.set('vai_tro',vai_tro);else u.searchParams.delete('vai_tro');
+    u.searchParams.set('page',p);u.searchParams.set('page_size',page_size);return u.toString();
+  }
+  function renderPager(total,cur,size){
+    const totalPages=Math.max(1,Math.ceil(total/size));
+    pagerUl.innerHTML='';pagerInfo.textContent=`Trang ${cur} / ${totalPages} • Tổng ${total} mục`;
+    pagerWrap.style.display='flex';
+    const add=(label,p,disabled=false,active=false)=>{
+      const li=document.createElement('li');
+      li.className=`page-item ${disabled?'disabled':''} ${active?'active':''}`;
+      const a=document.createElement('a');a.className='page-link';a.textContent=label;
+      if(!disabled && !active)a.href=buildUrl(p);
+      li.appendChild(a);pagerUl.appendChild(li);
+    };
+    add('‹',Math.max(1,cur-1),cur<=1);
+    let start=Math.max(1,cur-3);let end=Math.min(totalPages,start+6);
+    if(end-start+1<7)start=Math.max(1,end-6);
+    for(let i=start;i<=end;i++)add(String(i),i,false,i===cur);
+    add('›',Math.min(totalPages,cur+1),cur>=totalPages);
+  }
+  function renderRows(items,cur,size){
+    if(!items.length){tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu</td></tr>';return;}
+    const base=(cur-1)*size;
+    tbody.innerHTML=items.map((u,i)=>`
+      <tr>
+        <td>${base+i+1}</td>
+        <td>${u.ho_ten||''}</td>
+        <td>${u.email||''}</td>
+        <td>${u.sdt||''}</td>
+        <td><code>${(u.mat_khau??'').toString().replace(/</g,'&lt;')}</code></td>
+        <td>${badgeRole(u.vai_tro||'')}</td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary" href="/admin-panel/accounts/${u.id}/edit/">
+            <i class="bi bi-pencil"></i> Sửa
+          </a>
+          <a class="btn btn-sm btn-outline-danger" href="/admin-panel/accounts/${u.id}/delete/">
+            <i class="bi bi-trash"></i> Xóa
+          </a>
+        </td>
+      </tr>`).join('');
+  }
+  async function load(){
+    const api=new URL(`${window.location.origin}/api/accounts/`);
+    if(q)api.searchParams.set('q',q);
+    if(vai_tro)api.searchParams.set('vai_tro',vai_tro);
+    api.searchParams.set('page',page);api.searchParams.set('page_size',page_size);
+    api.searchParams.set('include_password','1');
+    try{
+      const res=await fetch(api,{headers:{'Accept':'application/json'}});
+      const data=await res.json();
+      renderRows(data.items||[],data.page||1,data.page_size||page_size);
+      renderPager(data.total||0,data.page||1,data.page_size||page_size);
+    }catch(e){
+      tbody.innerHTML='<tr><td colspan="7" class="text-center text-danger py-4">Lỗi tải dữ liệu</td></tr>';
+      pagerWrap.style.display='none';
+    }
+  }
+  load();
+})();
+</script>
+{% endblock %}
