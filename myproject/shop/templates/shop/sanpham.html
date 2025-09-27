@@ -2,42 +2,76 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}Trang sản phẩm{% endblock %}
+{% block title %}Danh sách sản phẩm{% endblock %}
+
+{% block extra_css %}
+<style>
+  .product-section{padding-top:0rem;padding-bottom:1rem}
+  .page-heading{margin-top:-3rem;margin-bottom:.25rem}
+  .product-card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);overflow:hidden;background:#fff;transition:.2s}
+  .product-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  .product-img{aspect-ratio:1/1;object-fit:cover}
+  .price-tag{color:#ff9800;font-weight:600}
+  .btn-buy-now{background:#2e7d32;color:#fff;border:none}
+  .btn-buy-now:hover{background:#1b5e20}
+  .btn-add-cart{border:1px dashed #2e7d32;color:#2e7d32}
+  /* phân trang đẹp */
+  .pagination .page-link {
+    min-width: 34px;
+    height: 34px;
+    padding: 0.25rem 0.6rem;
+    text-align: center;
+    line-height: 1.5;
+    border-radius: 50% !important;
+    color: #495057;
+    border: none;
+    background: #f8f9fa;
+    box-shadow: 0 2px 6px rgba(0,0,0,.05);
+    transition: all .2s ease;
+  }
+  .pagination .page-link:hover {
+    background: #4f8cff; color: #fff;
+  }
+  .pagination .page-item.active .page-link {
+    background: #3b78ff; color: #fff;
+    box-shadow:0 4px 12px rgba(60,120,240,.25);
+  }
+  .pagination .page-item.disabled .page-link {
+    opacity: .5; pointer-events: none; background: #f1f1f1;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<section class="py-5">
+<section class="product-section">
   <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="h3 mb-0">Sản phẩm nổi bật</h2>
-      <a href="#" class="btn btn-outline-success">Xem tất cả <i class="bi bi-arrow-right ms-1"></i></a>
-    </div>
+    <h1 class="fw-bold text-success page-heading">Danh sách sản phẩm</h1>
 
-    <div class="row g-4">
-      {% for sp in hot_products %}
-      <div class="col-6 col-md-3">
+    <div class="row g-3 g-md-4">
+      {% for sp in products %}
+      <div class="col-6 col-md-4 col-lg-3">
         <div class="product-card card h-100">
-          <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+          <a href="{% url 'shop:product_detail' sp.id %}">
+            {% if sp.hinh_anh and sp.hinh_anh.0 %}
+              <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+            {% else %}
+              <img src="{% static 'images/placeholder/produce.png' %}" class="product-img card-img-top" alt="{{ sp.ten }}">
+            {% endif %}
+          </a>
           <div class="card-body d-flex flex-column">
             <span class="badge bg-success-subtle text-success-emphasis mb-2">{{ sp.danh_muc_ten }}</span>
-
-            <h6 class="card-title mb-1" title="{{ sp.ten }}">{{ sp.ten }}</h6>
-
-            <p class="text-muted small mb-2">
-              {{ sp.mo_ta|default_if_none:""|truncatechars:80 }}
-            </p>
-
-            <div class="price-tag fw-semibold mb-2">
-              {{ sp.gia|intcomma }} VNĐ
-            </div>
-
+            <h6 class="card-title mb-1 text-truncate" title="{{ sp.ten }}">
+              <a class="text-decoration-none text-dark" href="{% url 'shop:product_detail' sp.id %}">
+                {{ sp.ten }}
+              </a>
+            </h6>
+            <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
+            <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
             <div class="mt-auto d-flex flex-column gap-2">
-              <a href="#" class="btn btn-buy-now w-100">Mua ngay</a>
-
-              <button type="button"
-                      class="btn btn-add-cart w-100"
-                      data-id="{{ sp.id }}"
-                      data-name="{{ sp.ten }}">
-                Thêm vào giỏ
+              <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-buy-now w-100">Xem chi tiết</a>
+              <button type="button" class="btn btn-add-cart w-100"
+                      data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+                <i class="bi bi-bag-plus"></i> Thêm vào giỏ
               </button>
             </div>
           </div>
@@ -50,6 +84,32 @@
       </div>
       {% endfor %}
     </div>
+
+    <!-- Phân trang -->
+    {% if pages > 1 %}
+    <div class="mt-4 d-flex justify-content-center">
+      <nav aria-label="Page navigation">
+        <ul class="pagination mb-0">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">‹</a>
+          </li>
+          {% for p in page_numbers %}
+            {% if p == '...' %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% else %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page >= pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">›</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
   </div>
 </section>
 {% endblock %}
@@ -62,29 +122,20 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const id = (btn.dataset.id || '').trim();
       if (!id) return;
-
       try {
         const res = await fetch('/api/cart/items/', {
           method: 'POST',
           headers: { 'Content-Type':'application/json' },
           body: JSON.stringify({ san_pham_id: id, so_luong: 1 })
         });
-
         if (res.status === 201) {
-          // Không hiện thông báo — chỉ cập nhật badge ở navbar
           if (window.updateCartBadge) window.updateCartBadge();
+          btn.classList.add('active');
+          setTimeout(()=>btn.classList.remove('active'), 300);
         } else if (res.status === 400 || res.status === 401) {
-          // Chưa login → chuyển tới trang đăng nhập
           window.location.href = '{% url "shop:shop_login" %}';
-        } else {
-          // Lỗi khác: log console cho dev
-          let err = {};
-          try { err = await res.json(); } catch(e){}
-          console.error('Cart add error:', res.status, err);
         }
-      } catch (ex) {
-        console.error('Fetch failed:', ex);
-      }
+      } catch (ex) { console.error('Fetch failed:', ex); }
     });
   });
 });

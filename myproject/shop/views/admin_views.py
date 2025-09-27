@@ -99,7 +99,10 @@ def products_list(request):
 
     skip = (page - 1) * PAGE_SIZE
     cursor = (
-        san_pham.find(filter_, {"ten_san_pham": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1})
+        san_pham.find(
+            filter_,
+            {"ten_san_pham": 1, "mo_ta": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1}
+        )
         .sort("ten_san_pham", 1)
         .skip(skip)
         .limit(PAGE_SIZE)
@@ -119,6 +122,7 @@ def products_list(request):
         items.append({
             "id": str(sp["_id"]),
             "ten": sp.get("ten_san_pham") or "Sản phẩm",
+            "mo_ta": sp.get("mo_ta", ""),  # <--- thêm dòng này
             "gia": sp.get("gia", 0),
             "hinh_anh": sp["hinh_anh"][0] if sp.get("hinh_anh") else None,
             "danh_muc": cat_name,
