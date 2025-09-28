@@ -2,12 +2,46 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}Danh sách sản phẩm{% endblock %}
+{% block title %}Sản phẩm{% endblock %}
 
-{% block extra_css %}
+{% block content %}
 <style>
-  .product-section{padding-top:0rem;padding-bottom:1rem}
-  .page-heading{margin-top:-3rem;margin-bottom:.25rem}
+  /* Sát phía trên */
+  .page-products{padding-top:.5rem;padding-bottom:1.5rem}
+  .page-products h2{margin:0 0 1rem 0}
+
+  /* Thanh tìm kiếm ngắn gọn, ở giữa */
+  .search-wrap{max-width:920px;margin:0 auto 1rem auto}
+  .search-bar{
+    display:flex;gap:.5rem;align-items:center;
+    padding:.5rem .75rem;border-radius:2rem;
+    box-shadow:0 2px 6px rgba(0,0,0,.05);background:#fff
+  }
+  .search-bar input, .search-bar select{
+    border:none;outline:none;font-size:.95rem;background:transparent
+  }
+  .search-bar .sep{width:1px;height:26px;background:#eaeaea}
+  .search-bar .input-text{flex:1;min-width:140px}
+  .search-bar .input-number{width:110px;text-align:right}
+
+  /* Dropdown danh mục hiển thị ngắn khi đóng; mở ra tự có scroll */
+  .select-wrap{position:relative;display:inline-flex;align-items:center;max-width:180px}
+  .select-truncate{
+    max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding-right:1.1rem;-webkit-appearance:none;background:transparent
+  }
+  .select-wrap::after{
+    content:"▾"; position:absolute; right:.25rem; pointer-events:none; color:#2e7d32; font-size:.8rem;
+  }
+
+  .btn-search{
+    background:linear-gradient(135deg,#2e7d32,#4caf50);
+    color:#fff;border:none;border-radius:2rem;padding:.4rem 1rem;font-weight:500
+  }
+  .btn-clear{
+    background:#f1f1f1;border:none;border-radius:2rem;padding:.4rem .9rem;font-size:.9rem
+  }
+
   .product-card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);overflow:hidden;background:#fff;transition:.2s}
   .product-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
   .product-img{aspect-ratio:1/1;object-fit:cover}
@@ -15,129 +49,230 @@
   .btn-buy-now{background:#2e7d32;color:#fff;border:none}
   .btn-buy-now:hover{background:#1b5e20}
   .btn-add-cart{border:1px dashed #2e7d32;color:#2e7d32}
-  /* phân trang đẹp */
-  .pagination .page-link {
-    min-width: 34px;
-    height: 34px;
-    padding: 0.25rem 0.6rem;
-    text-align: center;
-    line-height: 1.5;
-    border-radius: 50% !important;
-    color: #495057;
-    border: none;
-    background: #f8f9fa;
-    box-shadow: 0 2px 6px rgba(0,0,0,.05);
-    transition: all .2s ease;
+  .btn-buy-immediate{
+    background:#fff;color:#e53935;border:2px solid #e53935;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;
+    padding:.5rem 1rem;transition:all .25s ease;font-size:.95rem;letter-spacing:.3px;cursor:pointer;
   }
-  .pagination .page-link:hover {
-    background: #4f8cff; color: #fff;
+  .btn-buy-immediate:hover{background:#e53935;color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(229,57,53,.4)}
+
+  /* Toast */
+  #toast-success{
+    position:fixed;top:1rem;right:1rem;z-index:2147483647;
+    background:#2e7d32;color:#fff;padding:.75rem 1rem;border-radius:.5rem;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:.9rem;
+    opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s, transform .2s;
   }
-  .pagination .page-item.active .page-link {
-    background: #3b78ff; color: #fff;
-    box-shadow:0 4px 12px rgba(60,120,240,.25);
-  }
-  .pagination .page-item.disabled .page-link {
-    opacity: .5; pointer-events: none; background: #f1f1f1;
-  }
+  #toast-success.show{opacity:1;transform:translateY(0);}
 </style>
-{% endblock %}
 
-{% block content %}
-<section class="product-section">
-  <div class="container">
-    <h1 class="fw-bold text-success page-heading">Danh sách sản phẩm</h1>
+<div class="container page-products">
+  <h2 class="fw-bold text-success">Danh sách sản phẩm</h2>
 
-    <div class="row g-3 g-md-4">
-      {% for sp in products %}
-      <div class="col-6 col-md-4 col-lg-3">
-        <div class="product-card card h-100">
-          <a href="{% url 'shop:product_detail' sp.id %}">
-            {% if sp.hinh_anh and sp.hinh_anh.0 %}
-              <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
-            {% else %}
-              <img src="{% static 'images/placeholder/produce.png' %}" class="product-img card-img-top" alt="{{ sp.ten }}">
-            {% endif %}
-          </a>
-          <div class="card-body d-flex flex-column">
-            <span class="badge bg-success-subtle text-success-emphasis mb-2">{{ sp.danh_muc_ten }}</span>
-            <h6 class="card-title mb-1 text-truncate" title="{{ sp.ten }}">
-              <a class="text-decoration-none text-dark" href="{% url 'shop:product_detail' sp.id %}">
-                {{ sp.ten }}
-              </a>
-            </h6>
-            <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
-            <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
-            <div class="mt-auto d-flex flex-column gap-2">
-              <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-buy-now w-100">Xem chi tiết</a>
-              <button type="button" class="btn btn-add-cart w-100"
-                      data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
-                <i class="bi bi-bag-plus"></i> Thêm vào giỏ
-              </button>
-            </div>
+  <!-- Tìm kiếm + lọc -->
+  <form class="mb-3 search-wrap" method="get">
+    <div class="search-bar">
+      <i class="bi bi-search text-success"></i>
+
+      <!-- Từ khóa -->
+      <input class="input-text" type="text" name="q" placeholder="Tìm sản phẩm..." value="{{ q }}">
+
+      <span class="sep d-none d-md-inline"></span>
+
+      <!-- Danh mục (truncate) -->
+      <div class="select-wrap d-none d-md-inline">
+        <select name="cat" class="select-truncate" title="Danh mục">
+          <option value="">Tất cả danh mục</option>
+          {% for c in categories %}
+            {% with cname=c.ten|default:c.ten_danh_muc %}
+            <option value="{{ c.id }}" {% if active_cat == c.id %}selected{% endif %}>
+              {{ cname|default:"Khác" }}
+            </option>
+            {% endwith %}
+          {% endfor %}
+        </select>
+      </div>
+
+      <span class="sep d-none d-md-inline"></span>
+
+      <!-- Giá từ - đến -->
+      <div class="d-flex align-items-center gap-1">
+        <span class="text-muted d-none d-md-inline">Giá:</span>
+        <input class="input-number" type="number" min="0" step="1" name="min" placeholder="từ" value="{{ min }}">
+        <span class="text-muted">–</span>
+        <input class="input-number" type="number" min="0" step="1" name="max" placeholder="đến" value="{{ max }}">
+        <span class="text-muted d-none d-md-inline">VNĐ</span>
+      </div>
+
+      <!-- giữ sort & page_size -->
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <input type="hidden" name="page_size" value="{{ page_size }}">
+
+      <button type="submit" class="btn-search">Tìm</button>
+      {% if q or active_cat or min or max %}
+        <a href="{% url 'shop:sanpham_list' %}" class="btn-clear">Xóa lọc</a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Lưới sản phẩm -->
+  <div class="row g-3 g-md-4">
+    {% for sp in products %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="product-card card h-100">
+        <a href="{% url 'shop:product_detail' sp.id %}">
+          {% if sp.hinh_anh and sp.hinh_anh.0 %}
+            <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+          {% else %}
+            <img src="{% static 'images/placeholder/produce.png' %}" class="product-img card-img-top" alt="{{ sp.ten }}">
+          {% endif %}
+        </a>
+        <div class="card-body d-flex flex-column">
+          <span class="badge bg-success-subtle text-success-emphasis mb-2">{{ sp.danh_muc_ten }}</span>
+          <h6 class="card-title mb-1 text-truncate" title="{{ sp.ten }}">
+            <a class="text-decoration-none text-dark" href="{% url 'shop:product_detail' sp.id %}">{{ sp.ten }}</a>
+          </h6>
+          <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
+          <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
+          <div class="mt-auto d-flex flex-column gap-2">
+            <button type="button" class="btn btn-buy-immediate w-100 btn-buy-now-action"
+                    data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+              <i class="bi bi-lightning-charge-fill"></i> Mua ngay
+            </button>
+            <button type="button" class="btn btn-add-cart w-100"
+                    data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+              <i class="bi bi-bag-plus"></i> Thêm vào giỏ
+            </button>
+            <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-buy-now w-100">Xem chi tiết</a>
           </div>
         </div>
       </div>
-      {% empty %}
-      <div class="col-12 text-center text-muted py-5">
-        <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#2e7d32"></i>
-        Chưa có sản phẩm để hiển thị
-      </div>
-      {% endfor %}
     </div>
-
-    <!-- Phân trang -->
-    {% if pages > 1 %}
-    <div class="mt-4 d-flex justify-content-center">
-      <nav aria-label="Page navigation">
-        <ul class="pagination mb-0">
-          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-            <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">‹</a>
-          </li>
-          {% for p in page_numbers %}
-            {% if p == '...' %}
-              <li class="page-item disabled"><span class="page-link">…</span></li>
-            {% else %}
-              <li class="page-item {% if p == page %}active{% endif %}">
-                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
-              </li>
-            {% endif %}
-          {% endfor %}
-          <li class="page-item {% if page >= pages %}disabled{% endif %}">
-            <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">›</a>
-          </li>
-        </ul>
-      </nav>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">
+      <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#2e7d32"></i>
+      Chưa có sản phẩm nào
     </div>
-    {% endif %}
-
+    {% endfor %}
   </div>
-</section>
-{% endblock %}
 
-{% block extra_js %}
+  <!-- Phân trang (giữ tham số) -->
+  {% if pages > 1 %}
+  {% with qs="q="|add:q|urlencode|add:"&cat="|add:active_cat|add:"&min="|add:min|add:"&max="|add:max|add:"&sort="|add:sort|add:"&page_size="|add:page_size %}
+  <nav class="mt-4 d-flex justify-content-center">
+    <ul class="pagination">
+      <li class="page-item {% if page == 1 %}disabled{% endif %}">
+        <a class="page-link" href="?{{ qs }}&page={{ page|add:'-1' }}">&laquo;</a>
+      </li>
+      {% for p in page_numbers %}
+        {% if p == '...' %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% else %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="?{{ qs }}&page={{ p }}">{{ p }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if page == pages %}disabled{% endif %}">
+        <a class="page-link" href="?{{ qs }}&page={{ page|add:'1' }}">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+  {% endwith %}
+  {% endif %}
+</div>
+
+<!-- Toast -->
+<div id="toast-success" role="status" aria-live="polite">Đã thêm vào giỏ hàng!</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  const toast = document.getElementById('toast-success');
+  let toastTimer;
+
+  function showToast(msg){
+    if (!toast) return;
+    toast.textContent = msg || 'Thao tác thành công';
+    toast.classList.remove('show');
+    toast.offsetHeight;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
+  }
+
+  function buildAddItemUrl() {
+    const uid = ("{{ request.session.user_id|default:'' }}").trim();
+    let url = '/api/cart/items/';
+    if (uid) url += `?tai_khoan_id=${encodeURIComponent(uid)}`;
+    return { url, uid };
+  }
+
+  async function addToCart(productId) {
+    const { url, uid } = buildAddItemUrl();
+    return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', ...(uid ? {'X-User-Id': uid} : {})},
+      body: JSON.stringify({ san_pham_id: productId, so_luong: 1 }),
+      credentials: 'same-origin'
+    });
+  }
+
+  // Thêm vào giỏ
   document.querySelectorAll('.btn-add-cart').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
-      const id = (btn.dataset.id || '').trim();
-      if (!id) return;
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
       try {
-        const res = await fetch('/api/cart/items/', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({ san_pham_id: id, so_luong: 1 })
-        });
-        if (res.status === 201) {
+        const res = await addToCart(id);
+        if (res.ok) {
           if (window.updateCartBadge) window.updateCartBadge();
-          btn.classList.add('active');
-          setTimeout(()=>btn.classList.remove('active'), 300);
-        } else if (res.status === 400 || res.status === 401) {
-          window.location.href = '{% url "shop:shop_login" %}';
+          showToast('Đã thêm "' + (btn.dataset.name || 'sản phẩm') + '" vào giỏ hàng');
+          btn.classList.add('active'); setTimeout(()=>btn.classList.remove('active'), 300);
+          return;
         }
-      } catch (ex) { console.error('Fetch failed:', ex); }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        showToast('Không thêm được vào giỏ. Vui lòng thử lại!');
+      } catch (ex) {
+        console.error(ex);
+        showToast('Có lỗi mạng. Vui lòng thử lại!');
+      } finally {
+        btn.disabled = false;
+      }
     });
   });
+
+  // Mua ngay
+  document.querySelectorAll('.btn-buy-now-action').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
+      try {
+        const res = await addToCart(id);
+        if (res.ok) {
+          if (window.updateCartBadge) window.updateCartBadge();
+          window.location.href = '{% url "shop:cart_page" %}';
+          return;
+        }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        window.location.href = '{% url "shop:cart_page" %}';
+      } catch (ex) {
+        console.error(ex);
+        window.location.href = '{% url "shop:cart_page" %}';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  window.showToast = showToast;
 });
 </script>
 {% endblock %}

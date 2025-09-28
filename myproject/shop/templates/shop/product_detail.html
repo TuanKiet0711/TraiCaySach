@@ -2,147 +2,226 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}{{ product.ten|default:"Chi tiết sản phẩm" }}{% endblock %}
-
-{% block extra_css %}
-<style>
-  .pd-wrap{padding-top:1rem;padding-bottom:1.25rem}
-  /* Ảnh nhỏ–vừa, không bự quá */
-  .prod-media{max-width:420px;width:100%}
-  .main-img{width:100%;aspect-ratio:4/3;object-fit:cover;border:1px solid #eee;border-radius:.8rem;background:#fafafa}
-  .thumbs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem}
-  .thumbs img{width:72px;height:72px;object-fit:cover;border-radius:.5rem;border:1px solid #eee;cursor:pointer;background:#fff}
-  .thumbs img.active{outline:2px solid #16a34a}
-  /* Thông tin */
-  .badge-cat{background:#e8f5e9;color:#2e7d32}
-  .price{color:#f59e0b;font-weight:700;font-size:1.35rem}
-  .btn-buy{background:#2e7d32;color:#fff;border:none}
-  .btn-buy:hover{background:#1b5e20}
-  .btn-add{border:1px dashed #2e7d32;color:#2e7d32}
-  /* Liên quan */
-  .card-prod{border:1px solid #eee;border-radius:1rem;overflow:hidden;transition:.15s}
-  .card-prod:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.06)}
-  .card-prod img{aspect-ratio:1/1;object-fit:cover;background:#fafafa}
-</style>
-{% endblock %}
+{% block title %}{{ product.ten }}{% endblock %}
 
 {% block content %}
-<main class="container pd-wrap">
-  {% if error %}
-    <div class="alert alert-warning">{{ error }}</div>
-  {% else %}
-    <nav class="mb-3">
-      <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'shop:home' %}">Trang chủ</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'shop:sanpham_list' %}">Sản phẩm</a></li>
-        {% if product.danh_muc_ten %}<li class="breadcrumb-item">{{ product.danh_muc_ten }}</li>{% endif %}
-        <li class="breadcrumb-item active" aria-current="page">{{ product.ten }}</li>
-      </ol>
-    </nav>
+<style>
+  .product-detail{padding-top:2rem;padding-bottom:2rem}
+  /* ảnh lớn thu nhỏ */
+  .product-gallery img{
+    width:100%;
+    max-width:350px; /* chỉnh 300px nếu muốn nhỏ hơn nữa */
+    display:block;margin:0 auto;border-radius:1rem;object-fit:cover;
+    box-shadow:0 4px 12px rgba(0,0,0,.05)
+  }
+  /* thumbnail nhỏ */
+  .thumbs img{width:60px;height:60px;object-fit:cover;border-radius:.5rem;cursor:pointer;border:2px solid transparent;transition:.2s}
+  .thumbs img.active, .thumbs img:hover{border-color:#2e7d32}
 
-    <div class="row g-4 align-items-start">
-      <!-- Ảnh: nhỏ–vừa -->
-      <div class="col-md-5 col-lg-4 d-flex justify-content-center justify-content-md-start">
-        <div class="prod-media">
-          <img id="mainImg" class="main-img"
-               src="{% if product.hinh_anh and product.hinh_anh.0 %}{{ MEDIA_URL }}{{ product.hinh_anh.0 }}{% else %}{% static 'images/placeholder/produce.png' %}{% endif %}"
-               alt="{{ product.ten }}">
-          {% if product.hinh_anh %}
-          <div class="thumbs">
-            {% for im in product.hinh_anh %}
-              <img class="{% if forloop.first %}active{% endif %}"
-                   src="{{ MEDIA_URL }}{{ im }}" data-src="{{ MEDIA_URL }}{{ im }}"
-                   alt="thumb {{ forloop.counter }}">
+  .product-info h1{font-size:1.8rem;font-weight:700}
+  .price-tag{color:#ff9800;font-weight:700;font-size:1.5rem}
+  .btn-buy-immediate{
+    background:#fff;color:#e53935;border:2px solid #e53935;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;
+    padding:.6rem 1rem;transition:all .25s ease;font-size:1rem;letter-spacing:.3px;cursor:pointer;
+  }
+  .btn-buy-immediate:hover{background:#e53935;color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(229,57,53,.4)}
+  .btn-add-cart{border:1px dashed #2e7d32;color:#2e7d32;border-radius:999px;padding:.6rem 1rem}
+  .btn-add-cart:hover{background:#2e7d32;color:#fff}
+  .btn-back{border:1px solid #cfd8dc;color:#546e7a;border-radius:999px}
+  .btn-back:hover{background:#eceff1;color:#37474f}
+  .badge-cat{background:#e6f4ea;color:#2e7d32;font-weight:500;border-radius:999px;padding:.3rem .75rem}
+
+  .related h3{font-weight:700;color:#2e7d32;margin-bottom:1rem}
+  .related .card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);transition:.2s}
+  .related .card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  .related .card img{aspect-ratio:1/1;object-fit:cover;border-radius:1rem 1rem 0 0}
+  .related .price-tag{font-size:.95rem;color:#ff9800;font-weight:600}
+
+  /* Toast */
+  #toast-success{
+    position:fixed;top:1rem;right:1rem;z-index:2147483647;
+    background:#2e7d32;color:#fff;padding:.75rem 1rem;border-radius:.5rem;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:.9rem;
+    opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s, transform .2s;
+  }
+  #toast-success.show{opacity:1;transform:translateY(0);}
+</style>
+
+<div class="container product-detail">
+  <h2 class="mb-4 fw-bold text-success">Chi tiết sản phẩm</h2>
+
+  <div class="row g-4">
+    <!-- Gallery -->
+    <div class="col-lg-6 text-center">
+      <div class="product-gallery">
+        {% if product.hinh_anh %}
+          <img id="mainImage" src="{{ MEDIA_URL }}{{ product.hinh_anh.0 }}" alt="{{ product.ten }}">
+          {% if product.hinh_anh|length > 1 %}
+          <div class="thumbs d-flex gap-2 mt-3 flex-wrap justify-content-center">
+            {% for img in product.hinh_anh %}
+              <img src="{{ MEDIA_URL }}{{ img }}" alt="thumb {{ forloop.counter }}"
+                   class="{% if forloop.first %}active{% endif %}" onclick="swapImage(this)">
             {% endfor %}
           </div>
           {% endif %}
-        </div>
-      </div>
-
-      <!-- Thông tin mô tả kế bên -->
-      <div class="col-md-7 col-lg-8">
-        <span class="badge badge-cat mb-2">{{ product.danh_muc_ten }}</span>
-        <h2 class="mb-2">{{ product.ten }}</h2>
-        <div class="price mb-3">{{ product.gia|intcomma }} VNĐ</div>
-        <div class="text-muted mb-3">{{ product.mo_ta|default:"" }}</div>
-
-        <div class="d-flex flex-wrap gap-2 mt-2">
-          <a href="#" class="btn btn-buy px-4" id="btnBuyNow">Mua ngay</a>
-          <button class="btn btn-add px-4" id="btnAddCart" data-id="{{ product.id }}">
-            <i class="bi bi-bag-plus"></i> Thêm vào giỏ
-          </button>
-        </div>
+        {% else %}
+          <img id="mainImage" src="{% static 'images/placeholder/produce.png' %}" alt="{{ product.ten }}">
+        {% endif %}
       </div>
     </div>
 
-    {% if related %}
-    <hr class="my-4">
-    <h5 class="mb-3">Sản phẩm cùng danh mục</h5>
+    <!-- Info -->
+    <div class="col-lg-6 product-info">
+      <span class="badge-cat mb-2">{{ product.danh_muc_ten }}</span>
+      <h1>{{ product.ten }}</h1>
+      <div class="price-tag mb-3">{{ product.gia|intcomma }} VNĐ</div>
+      <p class="text-muted">{{ product.mo_ta|linebreaksbr }}</p>
+
+      <div class="mt-4 d-flex flex-column gap-2">
+        <button type="button" class="btn btn-buy-immediate w-100 btn-buy-now-action"
+                data-id="{{ product.id }}" data-name="{{ product.ten }}">
+          <i class="bi bi-lightning-charge-fill"></i> Mua ngay
+        </button>
+        <button type="button" class="btn btn-add-cart w-100"
+                data-id="{{ product.id }}" data-name="{{ product.ten }}">
+          <i class="bi bi-bag-plus"></i> Thêm vào giỏ
+        </button>
+        <!-- Nút quay lại danh sách -->
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-back w-100">
+          <i class="bi bi-arrow-left"></i> Quay lại danh sách
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if related %}
+  <div class="related mt-5">
+    <h3>Sản phẩm liên quan</h3>
     <div class="row g-3">
       {% for r in related %}
-      <div class="col-6 col-md-3 col-lg-3">
-        <a class="card card-prod text-decoration-none text-dark h-100" href="{% url 'shop:product_detail' r.id %}">
-          {% if r.img %}
-            <img src="{{ MEDIA_URL }}{{ r.img }}" class="card-img-top" alt="{{ r.ten }}">
-          {% else %}
-            <img src="{% static 'images/placeholder/produce.png' %}" class="card-img-top" alt="{{ r.ten }}">
-          {% endif %}
-          <div class="card-body">
-            <div class="fw-semibold text-truncate" title="{{ r.ten }}">{{ r.ten }}</div>
-            <div class="text-warning fw-bold">{{ r.gia|intcomma }} VNĐ</div>
+      <div class="col-6 col-md-3">
+        <div class="card h-100">
+          <a href="{% url 'shop:product_detail' r.id %}">
+            {% if r.img %}
+              <img src="{{ MEDIA_URL }}{{ r.img }}" class="card-img-top" alt="{{ r.ten }}">
+            {% else %}
+              <img src="{% static 'images/placeholder/produce.png' %}" class="card-img-top" alt="{{ r.ten }}">
+            {% endif %}
+          </a>
+          <div class="card-body p-2">
+            <h6 class="card-title text-truncate" title="{{ r.ten }}">
+              <a href="{% url 'shop:product_detail' r.id %}" class="text-decoration-none text-dark">{{ r.ten }}</a>
+            </h6>
+            <div class="price-tag">{{ r.gia|intcomma }} VNĐ</div>
           </div>
-        </a>
+        </div>
       </div>
       {% endfor %}
     </div>
-    {% endif %}
+  </div>
   {% endif %}
-</main>
-{% endblock %}
+</div>
 
-{% block extra_js %}
+<!-- Toast -->
+<div id="toast-success" role="status" aria-live="polite">Đã thêm vào giỏ hàng!</div>
+
 <script>
+/* Đổi ảnh khi click thumbnail */
+function swapImage(el){
+  document.querySelectorAll('.thumbs img').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('mainImage').src = el.src;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Đổi ảnh chính
-  document.querySelectorAll('.thumbs img').forEach(el => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.thumbs img').forEach(i => i.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('mainImg').src = el.dataset.src;
+  const toast = document.getElementById('toast-success');
+  let toastTimer;
+
+  function showToast(msg){
+    if (!toast) return;
+    toast.textContent = msg || 'Thao tác thành công';
+    toast.classList.remove('show');
+    toast.offsetHeight; // force reflow
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
+  }
+
+  function buildAddItemUrl() {
+    const uid = ("{{ request.session.user_id|default:'' }}").trim();
+    let url = '/api/cart/items/';
+    if (uid) url += `?tai_khoan_id=${encodeURIComponent(uid)}`;
+    return { url, uid };
+  }
+
+  async function addToCart(productId) {
+    const { url, uid } = buildAddItemUrl();
+    return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', ...(uid ? {'X-User-Id': uid} : {})},
+      body: JSON.stringify({ san_pham_id: productId, so_luong: 1 }),
+      credentials: 'same-origin'
+    });
+  }
+
+  // ===== Nút "Thêm vào giỏ" (y chang sanpham.html) =====
+  document.querySelectorAll('.btn-add-cart').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
+      try {
+        const res = await addToCart(id);
+        if (res.ok) {
+          if (window.updateCartBadge) window.updateCartBadge();
+          showToast('Đã thêm "' + (btn.dataset.name || 'sản phẩm') + '" vào giỏ hàng');
+          btn.classList.add('active'); setTimeout(()=>btn.classList.remove('active'), 300);
+          return;
+        }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        showToast('Không thêm được vào giỏ. Vui lòng thử lại!');
+      } catch (ex) {
+        console.error(ex);
+        showToast('Có lỗi mạng. Vui lòng thử lại!');
+      } finally {
+        btn.disabled = false;
+      }
     });
   });
 
-  // Thêm vào giỏ
-  const addBtn = document.getElementById('btnAddCart');
-  if (addBtn) {
-    addBtn.addEventListener('click', async (e) => {
+  // ===== Nút "Mua ngay" (y chang sanpham.html) =====
+  document.querySelectorAll('.btn-buy-now-action').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
       e.preventDefault();
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
       try {
-        const res = await fetch('/api/cart/items/', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({ san_pham_id: addBtn.dataset.id, so_luong: 1 })
-        });
-        if (res.status === 201) {
+        const res = await addToCart(id);
+        if (res.ok) {
           if (window.updateCartBadge) window.updateCartBadge();
-          addBtn.classList.add('btn-success');
-          setTimeout(()=>addBtn.classList.remove('btn-success'), 250);
-        } else if (res.status === 400 || res.status === 401) {
-          window.location.href = '{% url "shop:shop_login" %}';
+          window.location.href = '{% url "shop:cart_page" %}';
+          return;
         }
-      } catch (e) { console.error(e); }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        window.location.href = '{% url "shop:cart_page" %}';
+      } catch (ex) {
+        console.error(ex);
+        window.location.href = '{% url "shop:cart_page" %}';
+      } finally {
+        btn.disabled = false;
+      }
     });
-  }
+  });
 
-  // Mua ngay → thêm giỏ rồi sang trang giỏ
-  const buyNow = document.getElementById('btnBuyNow');
-  if (buyNow && addBtn) {
-    buyNow.addEventListener('click', (e) => {
-      e.preventDefault();
-      addBtn.click();
-      setTimeout(()=> window.location.href = '{% url 'shop:cart_page' %}', 120);
-    });
-  }
+  // expose nếu cần nơi khác
+  window.showToast = showToast;
 });
 </script>
 {% endblock %}

@@ -13,7 +13,7 @@
       <div class="carousel-caption">
         <h1 class="text-white">Trái Cây Sạch</h1>
         <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
-        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
       </div>
     </div>
     <div class="carousel-item">
@@ -21,7 +21,7 @@
       <div class="carousel-caption">
         <h1 class="text-white">Trái Cây Sạch</h1>
         <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
-        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
       </div>
     </div>
     <div class="carousel-item">
@@ -29,7 +29,7 @@
       <div class="carousel-caption">
         <h1 class="text-white">Trái Cây Sạch</h1>
         <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
-        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
       </div>
     </div>
   </div>
@@ -43,55 +43,42 @@
 {% endblock %}
 
 {% block content %}
-<!-- USP -->
 <style>
   /* Nền xanh nhạt */
-  .bg-soft-green {
-    background: linear-gradient(135deg, #e6f4ea 0%, #f6fff7 100%);
-  }
+  .bg-soft-green{background:linear-gradient(135deg,#e6f4ea 0%,#f6fff7 100%)}
+  .full-bleed{width:100vw;position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw}
+  .usp-card{background:#fff;border-radius:1rem;padding:2rem 1rem;box-shadow:0 4px 10px rgba(0,0,0,.05);transition:transform .2s,box-shadow .2s}
+  .usp-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,.1)}
+  .usp-icon{font-size:2rem;margin-bottom:1rem;color:#2e7d32}
+  .section-title{font-weight:700;color:#2e7d32;margin-bottom:2rem}
+  body{overflow-x:hidden}
 
-  /* Kéo nền ra full màn hình */
-  .full-bleed {
-    width: 100vw;
-    position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
+  /* Card sản phẩm nổi bật */
+  .product-card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);overflow:hidden;background:#fff;transition:.2s}
+  .product-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  .product-img{aspect-ratio:1/1;object-fit:cover}
+  .price-tag{color:#ff9800;font-weight:600}
+  .btn-buy-now{background:#2e7d32;color:#fff;border:none}
+  .btn-buy-now:hover{background:#1b5e20}
+  .btn-add-cart{border:1px dashed #2e7d32;color:#2e7d32}
+  .btn-buy-immediate{
+    background:#fff;color:#e53935;border:2px solid #e53935;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;
+    padding:.5rem 1rem;transition:all .25s ease;font-size:.95rem;letter-spacing:.3px;cursor:pointer;
   }
+  .btn-buy-immediate:hover{background:#e53935;color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(229,57,53,.4)}
 
-  /* Card USP */
-  .usp-card {
-    background-color: #ffffff;
-    border-radius: 1rem;
-    padding: 2rem 1rem;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    transition: transform .2s ease, box-shadow .2s ease;
+  /* Toast */
+  #toast-success{
+    position:fixed;top:1rem;right:1rem;z-index:2147483647;
+    background:#2e7d32;color:#fff;padding:.75rem 1rem;border-radius:.5rem;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:.9rem;
+    opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s, transform .2s;
   }
-  .usp-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-  }
-
-  /* Icon USP */
-  .usp-icon {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-    color: #2e7d32; /* xanh lá */
-  }
-
-  /* Tiêu đề */
-  .section-title {
-    font-weight: 700;
-    color: #2e7d32;
-    margin-bottom: 2rem;
-  }
-
-  /* Tránh thanh cuộn ngang */
-  body {
-    overflow-x: hidden;
-  }
+  #toast-success.show{opacity:1;transform:translateY(0);}
 </style>
+
+<!-- USP -->
 <section class="py-5 bg-soft-green full-bleed">
   <div class="container px-5">
     <h2 class="section-title text-center">Tại sao chọn chúng tôi?</h2>
@@ -100,32 +87,171 @@
         <div class="usp-card text-center">
           <div class="usp-icon"><i class="bi bi-award"></i></div>
           <h4 class="mb-3">Tươi – Sạch</h4>
-          <p class="text-muted">
-            Chọn lọc từ nông trại uy tín, rõ nguồn gốc, đảm bảo chất lượng.
-          </p>
+          <p class="text-muted">Chọn lọc từ nông trại uy tín, rõ nguồn gốc, đảm bảo chất lượng.</p>
         </div>
       </div>
       <div class="col-md-4">
         <div class="usp-card text-center">
           <div class="usp-icon"><i class="bi bi-truck"></i></div>
           <h4 class="mb-3">Giao nhanh</h4>
-          <p class="text-muted">
-            Đặt online, giao tận nơi trong ngày. Tươi ngon khi đến tay bạn.
-          </p>
+          <p class="text-muted">Đặt online, giao tận nơi trong ngày. Tươi ngon khi đến tay bạn.</p>
         </div>
       </div>
       <div class="col-md-4">
         <div class="usp-card text-center">
           <div class="usp-icon"><i class="bi bi-piggy-bank"></i></div>
           <h4 class="mb-3">Giá hợp lý</h4>
-          <p class="text-muted">
-            Ưu đãi thường xuyên, giá cả phải chăng cho mọi gia đình.
-          </p>
+          <p class="text-muted">Ưu đãi thường xuyên, giá cả phải chăng cho mọi gia đình.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- Sản phẩm nổi bật -->
+<section class="py-5">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h2 class="section-title m-0">Sản phẩm nổi bật</h2>
+      <a class="btn btn-outline-success" href="{% url 'shop:sanpham_list' %}">Xem tất cả</a>
+    </div>
 
+    <div class="row g-3 g-md-4">
+      {% for sp in featured %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="product-card card h-100">
+          <a href="{% url 'shop:product_detail' sp.id %}">
+            {% if sp.hinh_anh and sp.hinh_anh.0 %}
+              <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+            {% else %}
+              <img src="{% static 'images/placeholder/produce.png' %}" class="product-img card-img-top" alt="{{ sp.ten }}">
+            {% endif %}
+          </a>
+          <div class="card-body d-flex flex-column">
+            <span class="badge bg-success-subtle text-success-emphasis mb-2">{{ sp.danh_muc_ten }}</span>
+            <h6 class="card-title mb-1 text-truncate" title="{{ sp.ten }}">
+              <a class="text-decoration-none text-dark" href="{% url 'shop:product_detail' sp.id %}">{{ sp.ten }}</a>
+            </h6>
+            <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
+            <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
+            <div class="mt-auto d-flex flex-column gap-2">
+              <button type="button" class="btn btn-buy-immediate w-100 btn-buy-now-action"
+                      data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+                <i class="bi bi-lightning-charge-fill"></i> Mua ngay
+              </button>
+              <button type="button" class="btn btn-add-cart w-100"
+                      data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+                <i class="bi bi-bag-plus"></i> Thêm vào giỏ
+              </button>
+              <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-buy-now w-100">Xem chi tiết</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12 text-center text-muted py-5">
+        <i class="bi bi-inbox fs-1 d-block mb-2" style="color:#2e7d32"></i>
+        Chưa có sản phẩm nổi bật
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Toast -->
+<div id="toast-success" role="status" aria-live="polite">Đã thêm vào giỏ hàng!</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const toast = document.getElementById('toast-success');
+  let toastTimer;
+
+  function showToast(msg){
+    if (!toast) return;
+    toast.textContent = msg || 'Thao tác thành công';
+    toast.classList.remove('show');
+    // ép reflow
+    // eslint-disable-next-line no-unused-expressions
+    toast.offsetHeight;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
+  }
+
+  function buildAddItemUrl() {
+    const uid = ("{{ request.session.user_id|default:'' }}").trim();
+    let url = '/api/cart/items/';
+    if (uid) url += `?tai_khoan_id=${encodeURIComponent(uid)}`;
+    return { url, uid };
+  }
+
+  async function addToCart(productId) {
+    const { url, uid } = buildAddItemUrl();
+    return fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', ...(uid ? {'X-User-Id': uid} : {})},
+      body: JSON.stringify({ san_pham_id: productId, so_luong: 1 }),
+      credentials: 'same-origin'
+    });
+  }
+
+  // Thêm vào giỏ
+  document.querySelectorAll('.btn-add-cart').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
+      try {
+        const res = await addToCart(id);
+        if (res.ok) {
+          if (window.updateCartBadge) window.updateCartBadge();
+          showToast('Đã thêm "' + (btn.dataset.name || 'sản phẩm') + '" vào giỏ hàng');
+          btn.classList.add('active'); setTimeout(()=>btn.classList.remove('active'), 300);
+          return;
+        }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        showToast('Không thêm được vào giỏ. Vui lòng thử lại!');
+      } catch (ex) {
+        console.error(ex);
+        showToast('Có lỗi mạng. Vui lòng thử lại!');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // Mua ngay
+  document.querySelectorAll('.btn-buy-now-action').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const id = (btn.dataset.id || '').trim(); if (!id) return;
+      btn.disabled = true;
+      try {
+        const res = await addToCart(id);
+        if (res.ok) {
+          if (window.updateCartBadge) window.updateCartBadge();
+          window.location.href = '{% url "shop:cart_page" %}';
+          return;
+        }
+        if (res.status === 400 || res.status === 401) {
+          window.location.href = '{% url "shop:shop_login" %}';
+          return;
+        }
+        window.location.href = '{% url "shop:cart_page" %}';
+      } catch (ex) {
+        console.error(ex);
+        window.location.href = '{% url "shop:cart_page" %}';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  // expose toàn cục nếu cần dùng nơi khác
+  window.showToast = showToast;
+});
+</script>
 {% endblock %}
