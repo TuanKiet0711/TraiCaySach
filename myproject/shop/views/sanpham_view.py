@@ -1,4 +1,3 @@
-# shop/views/product_api.py
 from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -37,6 +36,30 @@ def _safe_objectid(id_str):
         return None
 
 
+def _save_uploaded_images(request_files):
+    """
+    Lưu 1 hoặc nhiều file ảnh từ các key 'hinh_anh' hoặc 'hinh_anh[]'
+    Trả về list path tương đối (vd: 'sanpham/abc.jpg')
+    """
+    urls = []
+    fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "sanpham"))
+
+    # Chấp nhận 'hinh_anh' (single) và/hoặc 'hinh_anh[]' (multiple)
+    keys = []
+    if "hinh_anh" in request_files:
+        keys.append("hinh_anh")
+    if "hinh_anh[]" in request_files:
+        keys.append("hinh_anh[]")
+
+    for key in keys:
+        files = request_files.getlist(key)
+        for f in files:
+            filename = fs.save(f.name, f)
+            urls.append("sanpham/" + filename)
+
+    return urls
+
+
 # ============ LIST ============
 @require_http_methods(["GET"])
 def products_list(request):
@@ -61,7 +84,7 @@ def products_list(request):
             filter_,
             {
                 "ten_san_pham": 1,
-                "mo_ta": 1,            # thêm mô tả
+                "mo_ta": 1,
                 "gia": 1,
                 "hinh_anh": 1,
                 "danh_muc_id": 1,
@@ -78,7 +101,7 @@ def products_list(request):
             {
                 "id": str(sp["_id"]),
                 "ten_san_pham": sp.get("ten_san_pham", ""),
-                "mo_ta": sp.get("mo_ta", ""),  # thêm mô tả
+                "mo_ta": sp.get("mo_ta", ""),
                 "gia": sp.get("gia", 0),
                 "hinh_anh": sp.get("hinh_anh", []),
                 "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
@@ -115,21 +138,7 @@ def products_create(request):
         if not ten:
             return JsonResponse({"error": "Thiếu ten_san_pham"}, status=400)
 
-        # Upload nhiều file: chấp nhận 'hinh_anh' hoặc 'hinh_anh[]'
-        hinh_anh_urls = []
-        file_keys = []
-        if "hinh_anh" in request.FILES:
-            file_keys.append("hinh_anh")
-        if "hinh_anh[]" in request.FILES:
-            file_keys.append("hinh_anh[]")
-
-        if file_keys:
-            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "sanpham"))
-            for key in file_keys:
-                files = request.FILES.getlist(key)
-                for f in files:
-                    filename = fs.save(f.name, f)
-                    hinh_anh_urls.append("sanpham/" + filename)
+        hinh_anh_urls = _save_uploaded_images(request.FILES)
 
         doc = {
             "ten_san_pham": ten,
@@ -197,12 +206,13 @@ def products_create(request):
     )
 
 
-# ============ DETAIL (GET/PUT/DELETE) ============
+# ============ DETAIL (GET/PUT/DELETE/POST _method=PUT) ============
 @csrf_exempt
 def product_detail(request, id):
     """
     GET    /api/products/<id>/
-    PUT    /api/products/<id>/   (JSON)
+    PUT    /api/products/<id>/        (JSON)
+    POST   /api/products/<id>/?_method=PUT  (multipart/form-data update with files)
     DELETE /api/products/<id>/
     """
     oid = _safe_objectid(id)
@@ -214,6 +224,72 @@ def product_detail(request, id):
         sp = san_pham.find_one({"_id": oid})
         if not sp:
             return JsonResponse({"error": "Not found"}, status=404)
+        return JsonResponse(
+            {
+                "id": str(sp["_id"]),
+                "ten_san_pham": sp.get("ten_san_pham", ""),
+                "mo_ta": sp.get("mo_ta", ""),
+                "gia": sp.get("gia", 0),
+                "hinh_anh": sp.get("hinh_anh", []),
+                "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
+            }
+        )
+
+    # ----- POST (multipart override to PUT) -----
+    if request.method == "POST" and (request.POST.get("_method") or "").upper() == "PUT":
+        # Chỉ chấp nhận multipart/form-data
+        if not (request.content_type or "").startswith("multipart/form-data"):
+            return JsonResponse({"error": "multipart/form-data required"}, status=415)
+
+        sp = san_pham.find_one({"_id": oid})
+        if not sp:
+            return JsonResponse({"error": "Not found"}, status=404)
+
+        update = {}
+
+        ten = (request.POST.get("ten_san_pham") or "").strip()
+        if ten != "":
+            update["ten_san_pham"] = ten
+
+        mo_ta = (request.POST.get("mo_ta") or "").strip()
+        if mo_ta != "":
+            update["mo_ta"] = mo_ta
+
+        if "gia" in request.POST:
+            gia_raw = request.POST.get("gia")
+            gia = _to_int(gia_raw, None) if gia_raw is not None else None
+            if gia is None:
+                return JsonResponse({"error": "gia phải là số"}, status=400)
+            update["gia"] = gia
+
+        # Ảnh: tổng hợp từ file upload + text tùy chọn
+        new_imgs = _save_uploaded_images(request.FILES)
+        text_img = (request.POST.get("hinh_anh_text") or "").strip()
+        if text_img:
+            new_imgs.append(text_img)
+
+        # Nếu có cung cấp ảnh (file/text) => thay thế toàn bộ list; nếu không đụng tới => giữ nguyên
+        if new_imgs:
+            update["hinh_anh"] = new_imgs
+
+        if "danh_muc_id" in request.POST:
+            dm = request.POST.get("danh_muc_id")
+            if dm:
+                dm_oid = _safe_objectid(dm)
+                if not dm_oid:
+                    return JsonResponse({"error": "Invalid danh_muc_id"}, status=400)
+                update["danh_muc_id"] = dm_oid
+            else:
+                update["danh_muc_id"] = None
+
+        if not update:
+            return JsonResponse({"error": "No fields to update"}, status=400)
+
+        result = san_pham.update_one({"_id": oid}, {"$set": update})
+        if result.matched_count == 0:
+            return JsonResponse({"error": "Not found"}, status=404)
+
+        sp = san_pham.find_one({"_id": oid})
         return JsonResponse(
             {
                 "id": str(sp["_id"]),
@@ -254,7 +330,6 @@ def product_detail(request, id):
                     return JsonResponse({"error": "Invalid danh_muc_id"}, status=400)
                 update["danh_muc_id"] = dm_oid
             else:
-                # cho phép xoá danh_muc_id
                 update["danh_muc_id"] = None
 
         if not update:
@@ -285,4 +360,4 @@ def product_detail(request, id):
 
     # ----- Method khác -----
     else:
-        return HttpResponseNotAllowed(["GET", "PUT", "DELETE"])
+        return HttpResponseNotAllowed(["GET", "PUT", "POST", "DELETE"])

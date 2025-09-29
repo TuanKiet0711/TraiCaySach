@@ -17,22 +17,29 @@
     padding:.5rem .75rem;border-radius:2rem;
     box-shadow:0 2px 6px rgba(0,0,0,.05);background:#fff
   }
-  .search-bar input, .search-bar select{
-    border:none;outline:none;font-size:.95rem;background:transparent
-  }
+  .search-bar input{border:none;outline:none;font-size:.95rem;background:transparent}
   .search-bar .sep{width:1px;height:26px;background:#eaeaea}
   .search-bar .input-text{flex:1;min-width:140px}
-  .search-bar .input-number{width:110px;text-align:right}
+  .search-bar .input-number{width:120px;text-align:right}
 
-  /* Dropdown danh mục hiển thị ngắn khi đóng; mở ra tự có scroll */
-  .select-wrap{position:relative;display:inline-flex;align-items:center;max-width:180px}
-  .select-truncate{
-    max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    padding-right:1.1rem;-webkit-appearance:none;background:transparent
+  /* Danh mục: dropdown nhỏ gọn */
+  .cat-wrap{position:relative;display:inline-flex;align-items:center}
+  .cat-btn{
+    display:inline-flex;align-items:center;gap:.35rem;
+    border:none;background:transparent;cursor:pointer;
+    padding:.25rem .5rem;border-radius:16px;line-height:1
   }
-  .select-wrap::after{
-    content:"▾"; position:absolute; right:.25rem; pointer-events:none; color:#2e7d32; font-size:.8rem;
+  .cat-btn .caret{font-size:.8rem;color:#2e7d32}
+  .cat-menu{
+    position:absolute;top:calc(100% + .35rem);left:0;z-index:1000;
+    min-width:220px;max-width:320px;max-height:260px;overflow:auto;
+    background:#fff;border:1px solid #e9ecef;border-radius:.5rem;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);padding:.25rem;display:none;
   }
+  .cat-menu.show{display:block}
+  .cat-item{display:block;padding:.4rem .6rem;border-radius:.35rem;color:#212529;text-decoration:none}
+  .cat-item:hover{background:#f5f8f5}
+  .cat-item.active{background:#e8f5e9;color:#1b5e20;font-weight:600}
 
   .btn-search{
     background:linear-gradient(135deg,#2e7d32,#4caf50);
@@ -70,7 +77,7 @@
   <h2 class="fw-bold text-success">Danh sách sản phẩm</h2>
 
   <!-- Tìm kiếm + lọc -->
-  <form class="mb-3 search-wrap" method="get">
+  <form id="filterForm" class="mb-3 search-wrap" method="get">
     <div class="search-bar">
       <i class="bi bi-search text-success"></i>
 
@@ -79,28 +86,34 @@
 
       <span class="sep d-none d-md-inline"></span>
 
-      <!-- Danh mục (truncate) -->
-      <div class="select-wrap d-none d-md-inline">
-        <select name="cat" class="select-truncate" title="Danh mục">
-          <option value="">Tất cả danh mục</option>
+      <!-- Danh mục: dropdown có scroll -->
+      <div class="cat-wrap d-none d-md-inline">
+        <!-- giữ giá trị thực để submit -->
+        <input type="hidden" name="cat" id="catHidden" value="{{ active_cat|default:'' }}">
+        <!-- nút hiển thị -->
+        <button type="button" id="catBtn" class="cat-btn" aria-expanded="false" aria-haspopup="listbox" aria-controls="catMenu">
+          <span id="catLabel" class="text-truncate" style="max-width:180px;">Tất cả danh mục</span>
+          <span class="caret">▾</span>
+        </button>
+        <!-- menu -->
+        <div id="catMenu" class="cat-menu" role="listbox">
+          <a href="#" class="cat-item {% if not active_cat %}active{% endif %}" data-id="">Tất cả danh mục</a>
           {% for c in categories %}
             {% with cname=c.ten|default:c.ten_danh_muc %}
-            <option value="{{ c.id }}" {% if active_cat == c.id %}selected{% endif %}>
-              {{ cname|default:"Khác" }}
-            </option>
+            <a href="#" class="cat-item {% if active_cat == c.id %}active{% endif %}" data-id="{{ c.id }}">{{ cname|default:"Khác" }}</a>
             {% endwith %}
           {% endfor %}
-        </select>
+        </div>
       </div>
 
       <span class="sep d-none d-md-inline"></span>
 
-      <!-- Giá từ - đến -->
+      <!-- Giá từ - đến (format dấu phẩy khi gõ) -->
       <div class="d-flex align-items-center gap-1">
         <span class="text-muted d-none d-md-inline">Giá:</span>
-        <input class="input-number" type="number" min="0" step="1" name="min" placeholder="từ" value="{{ min }}">
-        <span class="text-muted">–</span>
-        <input class="input-number" type="number" min="0" step="1" name="max" placeholder="đến" value="{{ max }}">
+        <input class="input-number" type="text" inputmode="numeric" pattern="[0-9,]*" name="min" id="minPrice" placeholder="từ" value="{{ min|default_if_none:''|intcomma }}">
+        <span class="text-muted">VNĐ –</span>
+        <input class="input-number" type="text" inputmode="numeric" pattern="[0-9,]*" name="max" id="maxPrice" placeholder="đến" value="{{ max|default_if_none:''|intcomma }}">
         <span class="text-muted d-none d-md-inline">VNĐ</span>
       </div>
 
@@ -270,6 +283,91 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = false;
       }
     });
+  });
+
+  // ===== Dropdown Danh mục (scroll) =====
+  const catBtn   = document.getElementById('catBtn');
+  const catMenu  = document.getElementById('catMenu');
+  const catLabel = document.getElementById('catLabel');
+  const catHidden= document.getElementById('catHidden');
+
+  function setCatLabelFromValue(val){
+    if (!val){
+      catLabel.textContent = 'Tất cả danh mục';
+      return;
+    }
+    const active = catMenu.querySelector(`.cat-item[data-id="${CSS.escape(String(val))}"]`);
+    catLabel.textContent = active ? active.textContent.trim() : 'Tất cả danh mục';
+  }
+
+  setCatLabelFromValue(catHidden.value || '');
+
+  catBtn?.addEventListener('click', () => {
+    catMenu.classList.toggle('show');
+    catBtn.setAttribute('aria-expanded', catMenu.classList.contains('show') ? 'true' : 'false');
+  });
+
+  catMenu?.addEventListener('click', (e) => {
+    const item = e.target.closest('.cat-item');
+    if (!item) return;
+    e.preventDefault();
+    // active class
+    catMenu.querySelectorAll('.cat-item.active').forEach(x => x.classList.remove('active'));
+    item.classList.add('active');
+
+    catHidden.value = item.dataset.id || '';
+    catLabel.textContent = item.textContent.trim() || 'Tất cả danh mục';
+    // đóng menu
+    catMenu.classList.remove('show');
+    catBtn.setAttribute('aria-expanded','false');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!catMenu.contains(e.target) && !catBtn.contains(e.target)) {
+      catMenu.classList.remove('show');
+      catBtn.setAttribute('aria-expanded','false');
+    }
+  });
+
+  // ===== Giá min/max: format dấu phẩy khi gõ + bỏ dấu khi submit =====
+  const minInput = document.getElementById('minPrice');
+  const maxInput = document.getElementById('maxPrice');
+
+  const formatComma = (digitsStr) => {
+    const clean = (digitsStr || '').replace(/[^\d]/g, '');
+    if (!clean) return '';
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  const handlePriceInput = (el) => {
+    const v = el.value;
+    const f = formatComma(v);
+    if (f !== v) {
+      const end = f.length;
+      el.value = f;
+      // caret cuối cho đơn giản
+      try { el.setSelectionRange(end, end); } catch (_) {}
+    }
+  };
+  const blockNonDigit = (e) => {
+    const isDigit = /\d/.test(e.key);
+    const isControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key);
+    if (!isDigit && !isControl) e.preventDefault();
+  };
+
+  [minInput, maxInput].forEach(inp => {
+    if (!inp) return;
+    // đảm bảo format nếu server trả về số chưa có dấu
+    inp.value = formatComma(inp.value);
+    inp.addEventListener('input', () => handlePriceInput(inp));
+    inp.addEventListener('keypress', blockNonDigit);
+    inp.addEventListener('blur', () => inp.value = formatComma(inp.value));
+  });
+
+  // Bỏ dấu phẩy trước khi submit (để query string là số nguyên)
+  const filterForm = document.getElementById('filterForm');
+  filterForm?.addEventListener('submit', () => {
+    if (minInput) minInput.value = (minInput.value || '').replace(/[^\d]/g,'');
+    if (maxInput) maxInput.value = (maxInput.value || '').replace(/[^\d]/g,'');
   });
 
   window.showToast = showToast;

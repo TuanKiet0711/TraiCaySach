@@ -8,19 +8,23 @@
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label">Họ tên</label>
-      <input type="text" name="ho_ten" class="form-control" required>
+      <input type="text" name="ho_ten" class="form-control" required
+             placeholder="Nhập họ và tên" autocomplete="name">
     </div>
     <div class="mb-3">
       <label class="form-label">Email</label>
-      <input type="email" name="email" class="form-control" required>
+      <input type="email" name="email" class="form-control" required
+             placeholder="Nhập email" autocomplete="email">
     </div>
     <div class="mb-3">
       <label class="form-label">SĐT</label>
-      <input type="text" name="sdt" class="form-control">
+      <input type="text" name="sdt" class="form-control"
+             placeholder="Nhập số điện thoại" inputmode="tel" autocomplete="tel">
     </div>
     <div class="mb-3">
       <label class="form-label">Mật khẩu</label>
-      <input type="text" name="mat_khau" class="form-control" required>
+      <input type="password" name="mat_khau" class="form-control" required
+             placeholder="Tối thiểu 6 ký tự" autocomplete="new-password">
     </div>
     <div class="mb-3">
       <label class="form-label">Vai trò</label>
@@ -35,26 +39,30 @@
 </div>
 
 <script>
-document.getElementById('formCreateAcc').addEventListener('submit',async(e)=>{
+document.getElementById('formCreateAcc').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const form=e.target;
-  const body={
-    ho_ten:form.ho_ten.value,
-    email:form.email.value,
-    sdt:form.sdt.value,
-    mat_khau:form.mat_khau.value,
-    vai_tro:form.vai_tro.value
+  const form = e.target;
+
+  const body = {
+    ho_ten: (form.ho_ten.value || '').trim(),
+    email: (form.email.value || '').trim(),
+    sdt: (form.sdt.value || '').trim(),
+    mat_khau: form.mat_khau.value,
+    vai_tro: form.vai_tro.value
   };
-  const res=await fetch('/api/accounts/create/',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify(body)
+
+  const res = await fetch('/api/accounts/create/', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Accept':'application/json'},
+    body: JSON.stringify(body),
+    credentials: 'same-origin'
   });
-  if(res.ok){
-    window.location.href="{% url 'shop:admin_accounts' %}";
-  }else{
-    const data=await res.json();
-    alert(data.error||'Lỗi tạo tài khoản');
+
+  if (res.ok) {
+    window.location.href = "{% url 'shop:admin_accounts' %}";
+  } else {
+    const data = await res.json().catch(() => ({}));
+    alert(data.error || 'Lỗi tạo tài khoản');
   }
 });
 </script>

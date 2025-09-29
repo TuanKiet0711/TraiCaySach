@@ -10,7 +10,9 @@ PAGE_SIZE_DEFAULT = 10
 PAGE_SIZE_MAX = 100
 
 def _json_required(request):
-    if request.content_type != "application/json":
+    """Yêu cầu Content-Type: application/json (chấp nhận cả ;charset=UTF-8)"""
+    ctype = request.content_type or ""
+    if not ctype.startswith("application/json"):
         return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
     return None
 
@@ -45,10 +47,12 @@ def categories_list(request):
     total = danh_muc.count_documents(filter_)
     skip = (page - 1) * page_size
 
-    cursor = (danh_muc.find(filter_, {"ten_danh_muc": 1})
-                      .sort("ten_danh_muc", 1)
-                      .skip(skip)
-                      .limit(page_size))
+    cursor = (
+        danh_muc.find(filter_, {"ten_danh_muc": 1})
+        .sort("ten_danh_muc", 1)
+        .skip(skip)
+        .limit(page_size)
+    )
 
     items = [{"id": str(dm["_id"]), "ten_danh_muc": dm.get("ten_danh_muc", "")} for dm in cursor]
 
@@ -64,7 +68,8 @@ def categories_list(request):
 def categories_create(request):
     """POST /api/categories/ -> tạo danh mục"""
     err = _json_required(request)
-    if err: return err
+    if err:
+        return err
     try:
         body = json.loads(request.body.decode("utf-8"))
     except Exception:
@@ -84,6 +89,11 @@ def categories_create(request):
 
 @csrf_exempt
 def category_detail(request, id):
+    """
+    GET    /api/categories/<id>/
+    PUT    /api/categories/<id>/   (JSON)
+    DELETE /api/categories/<id>/
+    """
     try:
         oid = ObjectId(id)
     except Exception:
@@ -97,7 +107,8 @@ def category_detail(request, id):
 
     elif request.method == "PUT":
         err = _json_required(request)
-        if err: return err
+        if err:
+            return err
         try:
             body = json.loads(request.body.decode("utf-8"))
         except Exception:

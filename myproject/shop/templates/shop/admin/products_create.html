@@ -8,7 +8,7 @@
     <form id="createForm" autocomplete="off" enctype="multipart/form-data">
       <div class="mb-3">
         <label class="form-label fw-semibold" for="ten">Tên sản phẩm</label>
-        <input type="text" id="ten" class="form-control" required placeholder="VD: Táo Mỹ" />
+        <input type="text" id="ten" class="form-control" required placeholder="Nhập tên sản phẩm" />
       </div>
 
       <div class="mb-3">
@@ -18,7 +18,18 @@
 
       <div class="mb-3">
         <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-        <input type="number" id="gia" class="form-control" required min="0" step="1000" placeholder="85000" />
+        <!-- đổi sang text để format được dấu phẩy khi gõ -->
+        <input
+          type="text"
+          id="gia"
+          class="form-control"
+          required
+          inputmode="numeric"
+          pattern="[0-9,]*"
+          placeholder="Nhập giá"
+          autocomplete="off"
+        />
+
       </div>
 
       <div class="mb-3">
@@ -29,14 +40,37 @@
         </div>
       </div>
 
+      <!-- Danh mục: Dropdown có scroll -->
       <div class="mb-3">
         <label class="form-label">Danh mục</label>
-        <select id="danh_muc_id" class="form-select" required>
-          <option value="">-- Chọn danh mục --</option>
-          {% for cat in categories %}
-            <option value="{{ cat.id }}">{{ cat.ten }}</option>
-          {% endfor %}
-        </select>
+
+        <!-- Trường ẩn giữ giá trị để submit -->
+        <input type="hidden" id="danh_muc_id" required>
+
+        <!-- Nút mở dropdown -->
+        <div class="dropdown w-100">
+          <button
+            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+            type="button"
+            id="btnDanhMuc"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <span id="labelDanhMuc">-- Chọn danh mục --</span>
+            <span class="ms-2">▾</span>
+          </button>
+
+          <!-- Menu có giới hạn chiều cao + scroll -->
+          <ul class="dropdown-menu w-100 p-1" style="max-height: 260px; overflow: auto;">
+            {% for cat in categories %}
+              <li>
+                <a class="dropdown-item" href="#" data-id="{{ cat.id }}">{{ cat.ten }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="form-text text-danger d-none" id="dmError">Vui lòng chọn danh mục</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -51,6 +85,7 @@
 {% block extra_js %}
 <script>
 ;(function () {
+  // ---- CSRF helper ----
   function getCookie(name) {
     let v = null
     if (document.cookie)
@@ -64,11 +99,19 @@
     return v
   }
   const CSRF = getCookie('csrftoken')
+
+  // ---- DOM refs ----
   const form = document.getElementById('createForm')
   const fileInput = document.getElementById('hinh_anh')
   const preview = document.getElementById('preview_img')
 
-  // Preview ảnh khi chọn file
+  // Dropdown Danh mục
+  const dmHidden = document.getElementById('danh_muc_id')
+  const dmLabel  = document.getElementById('labelDanhMuc')
+  const dmError  = document.getElementById('dmError')
+  const dmMenu   = document.querySelector('.dropdown .dropdown-menu')
+
+  // ---- Preview ảnh khi chọn file ----
   fileInput.addEventListener('change', () => {
     if (fileInput.files && fileInput.files[0]) {
       const reader = new FileReader()
@@ -82,14 +125,62 @@
     }
   })
 
+  // ---- Chọn danh mục từ dropdown (có scroll) ----
+  dmMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('.dropdown-item')
+    if (!item) return
+    e.preventDefault()
+    dmHidden.value = item.dataset.id || ''
+    dmLabel.textContent = item.textContent.trim() || '-- Chọn danh mục --'
+    dmError.classList.add('d-none')
+  })
+
+  // ---- Format giá: hiển thị 1,000 phân cách khi gõ ----
+  const giaInput = document.getElementById('gia')
+  const formatComma = (digitsStr) => {
+    // bỏ mọi ký tự không phải số, rồi thêm dấu phẩy 3 số
+    const clean = (digitsStr || '').replace(/[^\d]/g, '')
+    if (!clean) return ''
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+
+  // Khi gõ/ dán
+  giaInput.addEventListener('input', (e) => {
+    const val = e.target.value
+    const formatted = formatComma(val)
+    if (formatted !== val) {
+      const end = formatted.length
+      e.target.value = formatted
+      // đơn giản: đặt caret ở cuối (đủ nhanh gọn)
+      e.target.setSelectionRange(end, end)
+    }
+  })
+
+  // Chặn chữ cái
+  giaInput.addEventListener('keypress', (e) => {
+    const isDigit = /\d/.test(e.key)
+    const isControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key)
+    if (!isDigit && !isControl) {
+      e.preventDefault()
+    }
+  })
+
+  // Format lại khi blur
+  giaInput.addEventListener('blur', (e) => {
+    e.target.value = formatComma(e.target.value)
+  })
+
+  // ---- Submit form ----
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const ten = document.getElementById('ten').value.trim()
     const mo_ta = document.getElementById('mo_ta').value.trim()
-    const gia = parseInt(document.getElementById('gia').value, 10) || 0
-    const danh_muc_id = document.getElementById('danh_muc_id').value
+    const giaRaw = giaInput.value.trim()
+    const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
+    const danh_muc_id = dmHidden.value
 
     if (!ten || !danh_muc_id) {
+      if (!danh_muc_id) dmError.classList.remove('d-none')
       alert('Vui lòng nhập đủ thông tin')
       return
     }
@@ -97,7 +188,7 @@
     const formData = new FormData()
     formData.append('ten_san_pham', ten)
     formData.append('mo_ta', mo_ta)
-    formData.append('gia', gia)
+    formData.append('gia', gia) // gửi số nguyên (đã bỏ dấu phẩy)
     formData.append('danh_muc_id', danh_muc_id)
     if (fileInput.files.length > 0) {
       formData.append('hinh_anh', fileInput.files[0])

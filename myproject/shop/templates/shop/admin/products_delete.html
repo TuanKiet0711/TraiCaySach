@@ -5,11 +5,46 @@
 {% block content %}
 <div class="card border-danger shadow-sm">
   <div class="card-body">
-    <h5 class="text-danger">Bạn chắc chắn muốn xóa sản phẩm này?</h5>
-    <p class="mb-1">ID: <code class="small">{{ product_id }}</code></p>
-    <p class="mb-3">Tên: <span id="productName" class="fw-semibold">Đang tải…</span></p>
-    <div class="d-flex gap-2">
-      <button id="btnDelete" class="btn btn-danger">Xóa</button>
+    <h5 class="text-danger mb-3">Bạn chắc chắn muốn xóa sản phẩm này?</h5>
+
+    <div class="mb-2">
+      <span class="text-muted">ID:</span>
+      <code class="small">{{ product_id }}</code>
+    </div>
+
+    <div class="row g-3 align-items-start">
+      <div class="col-md-8">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Tên</dt>
+          <dd class="col-sm-8" id="pTen" class="fw-semibold">Đang tải…</dd>
+
+          <dt class="col-sm-4">Mô tả</dt>
+          <dd class="col-sm-8" id="pMoTa" class="text-muted">—</dd>
+
+          <dt class="col-sm-4">Giá</dt>
+          <dd class="col-sm-8"><span id="pGia">—</span> <span class="text-muted">VNĐ</span></dd>
+
+          <dt class="col-sm-4">Danh mục</dt>
+          <dd class="col-sm-8" id="pDanhMucTen">—</dd>
+
+          <dt class="col-sm-4">Ảnh</dt>
+          <dd class="col-sm-8">
+            <div id="pImgWrap" style="display:none">
+              <img id="pImg" src="" alt="Ảnh sản phẩm"
+                   style="max-height:160px; border:1px solid #ddd; padding:3px; border-radius:6px" />
+            </div>
+            <span id="pNoImg" class="text-muted">Không có hình ảnh</span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <hr class="my-4"/>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button id="btnDelete" class="btn btn-danger">
+        <i class="bi bi-trash me-1"></i> Xóa
+      </button>
       <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
     </div>
   </div>
@@ -20,6 +55,8 @@
 <script>
 (async function(){
   const id = "{{ product_id }}";
+  const $ = (id) => document.getElementById(id);
+
   function getCookie(name){
     let v=null;
     if(document.cookie)for(let c of document.cookie.split(';')){
@@ -30,17 +67,65 @@
   }
   const CSRF = getCookie('csrftoken');
 
-  // load name
-  const res = await fetch(`/api/products/${id}/`);
-  if(res.ok){
-    const data = await res.json();
-    document.getElementById('productName').textContent = data.ten_san_pham || '(không xác định)';
-  } else {
-    document.getElementById('productName').textContent = 'Không tìm thấy';
+  function fmtMoney(n){
+    try{
+      const x = parseInt(n,10);
+      return isNaN(x) ? '—' : x.toLocaleString('vi-VN');
+    }catch(e){return '—'}
   }
 
-  document.getElementById('btnDelete').addEventListener('click', async ()=>{
-    if(!confirm('Xóa sản phẩm này?')) return;
+  // ====== Load chi tiết sản phẩm ======
+  const res = await fetch(`/api/products/${id}/`);
+  let danh_muc_id = null;
+
+  if(res.ok){
+    const data = await res.json();
+
+    $('pTen').textContent = data.ten_san_pham || '(không xác định)';
+    $('pMoTa').textContent = data.mo_ta || '—';
+    $('pGia').textContent = fmtMoney(data.gia);
+    danh_muc_id = data.danh_muc_id || null;
+
+    // Ảnh
+    const imgs = Array.isArray(data.hinh_anh) ? data.hinh_anh : [];
+    if(imgs.length > 0 && imgs[0]){
+      const first = imgs[0];
+      const isAbsolute = /^(https?:)?\/\//i.test(first) || /^data:image\//i.test(first);
+      const url = isAbsolute ? first : ('/media/' + String(first).replace(/^\//,''));
+      $('pImg').src = url;
+      $('pNoImg').style.display = 'none';
+      $('pImgWrap').style.display = 'block';
+    }else{
+      $('pNoImg').style.display = 'inline';
+      $('pImgWrap').style.display = 'none';
+    }
+  } else {
+    $('pTen').textContent = 'Không tìm thấy';
+    $('pMoTa').textContent = '—';
+    $('pGia').textContent = '—';
+    $('pNoImg').style.display = 'inline';
+    $('pImgWrap').style.display = 'none';
+  }
+
+  // ====== Lấy tên danh mục (nếu có id) ======
+  async function fetchCategoryName(dmId){
+    try{
+      if(!dmId) return null;
+      // gọi endpoint lấy chi tiết danh mục
+      const r = await fetch(`/api/categories/${dmId}/`);
+      if(!r.ok) return null;
+      const dm = await r.json();
+      // API của bạn trả về { id, ten_danh_muc }
+      return `${dm.id} – ${dm.ten_danh_muc}`; // trả cả id và tên danh mục
+    }catch(e){ return null; }
+  }
+
+  const catName = await fetchCategoryName(danh_muc_id);
+  $('pDanhMucTen').textContent = catName || '—';
+
+  // ====== Xóa ======
+  $('btnDelete').addEventListener('click', async ()=>{
+    if(!confirm('Xóa sản phẩm này? Hành động không thể hoàn tác.')) return;
     const r = await fetch(`/api/products/${id}/`, {
       method: 'DELETE',
       headers: { 'X-CSRFToken': CSRF }

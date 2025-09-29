@@ -22,25 +22,59 @@
 
         <div class="mb-3">
           <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-          <input type="number" id="gia" class="form-control" required min="0" step="1000" />
+          <!-- đổi sang text để format dấu phẩy khi gõ -->
+          <input
+            type="text"
+            id="gia"
+            class="form-control"
+            required
+            inputmode="numeric"
+            pattern="[0-9,]*"
+            placeholder="85,000"
+            autocomplete="off"
+          />
+         
         </div>
 
         <div class="mb-3">
-          <label class="form-label fw-semibold" for="hinh_anh">Hình ảnh (URL hoặc đường dẫn)</label>
-          <input type="text" id="hinh_anh" class="form-control" />
+          <label class="form-label fw-semibold" for="hinh_anh_file">Hình ảnh</label>
+          <input type="file" id="hinh_anh_file" class="form-control" accept="image/*" />
+        
+          <input type="text" id="hinh_anh" class="form-control mt-2" placeholder="URL hoặc path (vd: sanpham/a.jpg)" />
           <div class="mt-2">
             <img id="preview_img" src="" alt="Xem trước hình ảnh" style="max-height:150px; display:none; border:1px solid #ccc; padding:3px;" />
           </div>
         </div>
 
+        <!-- Danh mục: Dropdown có scroll + hidden input để submit -->
         <div class="mb-3">
-          <label class="form-label fw-semibold" for="danh_muc">Danh mục</label>
-          <select id="danh_muc" class="form-select" required>
-            <option value="">-- Chọn danh mục --</option>
-            {% for dm in categories %}
-              <option value="{{ dm.id }}">{{ dm.ten }}</option>
-            {% endfor %}
-          </select>
+          <label class="form-label fw-semibold">Danh mục</label>
+
+          <!-- Hidden giữ giá trị thực -->
+          <input type="hidden" id="danh_muc_id">
+
+          <div class="dropdown w-100">
+            <button
+              class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+              type="button"
+              id="btnDanhMuc"
+              data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <span id="labelDanhMuc">-- Chọn danh mục --</span>
+              <span class="ms-2">▾</span>
+            </button>
+
+            <!-- Menu giới hạn chiều cao + scroll -->
+            <ul id="dmMenu" class="dropdown-menu w-100 p-1" style="max-height: 260px; overflow: auto;">
+              {% for dm in categories %}
+                <li>
+                  <a class="dropdown-item" href="#" data-id="{{ dm.id }}">{{ dm.ten }}</a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="form-text text-danger d-none" id="dmError">Vui lòng chọn danh mục</div>
         </div>
 
         <div class="d-flex gap-2">
@@ -56,6 +90,7 @@
 <script>
 ;(async function () {
   const id = '{{ product_id }}'
+  const $ = (id) => document.getElementById(id)
 
   function getCookie(name) {
     let v = null
@@ -71,7 +106,14 @@
   }
   const CSRF = getCookie('csrftoken')
 
-  // nạp dữ liệu hiện tại
+  // ===== helpers =====
+  const formatComma = (digitsStr) => {
+    const clean = (digitsStr || '').replace(/[^\d]/g, '')
+    if (!clean) return ''
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+
+  // ====== Load dữ liệu hiện tại ======
   const res = await fetch(`/api/products/${id}/`)
   if (!res.ok) {
     alert('Không tìm thấy sản phẩm')
@@ -80,62 +122,137 @@
   }
   const cur = await res.json()
 
-  document.getElementById('ten').value = cur.ten_san_pham || ''
-  document.getElementById('mo_ta').value = cur.mo_ta || ''
-  document.getElementById('gia').value = cur.gia || 0
-  document.getElementById('hinh_anh').value =
-    cur.hinh_anh && cur.hinh_anh.length > 0 ? cur.hinh_anh[0] : ''
+  $('ten').value = cur.ten_san_pham || ''
+  $('mo_ta').value = cur.mo_ta || ''
 
-  // 🟢 thêm dòng này để giữ danh mục đã chọn
-  document.getElementById('danh_muc').value = cur.danh_muc_id || ''
+  // set giá và format khi load
+  const giaInput = $('gia')
+  const initGia = (typeof cur.gia === 'number' ? String(cur.gia) : (cur.gia || ''))
+  giaInput.value = formatComma(initGia)
 
-  if (cur.hinh_anh && cur.hinh_anh.length > 0) {
-    const preview = document.getElementById('preview_img')
-    preview.src = '/media/' + cur.hinh_anh[0] // luôn thêm /media/
-    preview.style.display = 'block'
+  // ---- Danh mục (dropdown + hidden) ----
+  const dmHidden = $('danh_muc_id')
+  const dmLabel  = $('labelDanhMuc')
+  const dmError  = $('dmError')
+  const dmMenu   = $('dmMenu')
+
+  dmHidden.value = cur.danh_muc_id || ''
+  if (dmHidden.value) {
+    const activeItem = dmMenu.querySelector(`.dropdown-item[data-id="${dmHidden.value}"]`)
+    dmLabel.textContent = activeItem ? activeItem.textContent.trim() : '-- Chọn danh mục --'
   } else {
-    document.getElementById('preview_img').style.display = 'none'
+    dmLabel.textContent = '-- Chọn danh mục --'
   }
 
-  // submit PUT
-  document.getElementById('editForm').addEventListener('submit', async (e) => {
+  dmMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('.dropdown-item')
+    if (!item) return
     e.preventDefault()
-    const payload = {
-      ten_san_pham: document.getElementById('ten').value.trim(),
-      mo_ta: document.getElementById('mo_ta').value.trim(),
-      gia: parseInt(document.getElementById('gia').value, 10) || 0,
-      hinh_anh: document.getElementById('hinh_anh').value.trim()
-        ? [document.getElementById('hinh_anh').value.trim()]
-        : [],
-      danh_muc_id: document.getElementById('danh_muc').value
+    dmHidden.value = item.dataset.id || ''
+    dmLabel.textContent = item.textContent.trim() || '-- Chọn danh mục --'
+    dmError.classList.add('d-none')
+  })
+
+  // ====== Hình ảnh / preview ======
+  $('hinh_anh').value = (cur.hinh_anh && cur.hinh_anh[0]) ? cur.hinh_anh[0] : ''
+
+  const preview = $('preview_img')
+  function showPreviewFromPathOrUrl(val) {
+    if (!val) { preview.style.display = 'none'; return }
+    const isAbsolute = /^(https?:)?\/\//i.test(val) || /^data:image\//i.test(val)
+    preview.src = isAbsolute ? val : ('/media/' + val.replace(/^\//,''))
+    preview.style.display = 'block'
+  }
+  showPreviewFromPathOrUrl($('hinh_anh').value)
+
+  $('hinh_anh').addEventListener('input', function () {
+    const val = this.value.trim()
+    if (val) showPreviewFromPathOrUrl(val)
+    else preview.style.display = 'none'
+  })
+
+  $('hinh_anh_file').addEventListener('change', function () {
+    const f = this.files && this.files[0]
+    if (f) {
+      preview.src = URL.createObjectURL(f)
+      preview.style.display = 'block'
+    } else {
+      showPreviewFromPathOrUrl($('hinh_anh').value.trim())
     }
-    if (!payload.ten_san_pham || !payload.danh_muc_id) {
+  })
+
+  // ====== Format giá khi gõ ======
+  giaInput.addEventListener('input', (e) => {
+    const val = e.target.value
+    const formatted = formatComma(val)
+    if (formatted !== val) {
+      const end = formatted.length
+      e.target.value = formatted
+      e.target.setSelectionRange(end, end) // caret về cuối cho gọn
+    }
+  })
+  giaInput.addEventListener('keypress', (e) => {
+    const isDigit = /\d/.test(e.key)
+    const isControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key)
+    if (!isDigit && !isControl) e.preventDefault()
+  })
+  giaInput.addEventListener('blur', (e) => {
+    e.target.value = formatComma(e.target.value)
+  })
+
+  // ====== Submit ======
+  $('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault()
+
+    const ten = $('ten').value.trim()
+    const mo_ta = $('mo_ta').value.trim()
+    const giaRaw = giaInput.value.trim()
+    const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
+    const danh_muc_id = dmHidden.value
+    const urlText = $('hinh_anh').value.trim()
+    const fileInput = $('hinh_anh_file')
+
+    if (!ten || !danh_muc_id) {
+      if (!danh_muc_id) dmError.classList.remove('d-none')
       alert('Vui lòng nhập đủ thông tin')
       return
     }
 
-    const r = await fetch(`/api/products/${id}/`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-      body: JSON.stringify(payload)
-    })
+    let r
+    if (fileInput.files && fileInput.files.length > 0) {
+      const fd = new FormData()
+      fd.append('_method', 'PUT')
+      fd.append('ten_san_pham', ten)
+      fd.append('mo_ta', mo_ta)
+      fd.append('gia', String(gia))            // gửi số nguyên (đã bỏ dấu phẩy)
+      fd.append('danh_muc_id', danh_muc_id)
+      fd.append('hinh_anh', fileInput.files[0])
+      if (urlText) fd.append('hinh_anh_text', urlText)
+      r = await fetch(`/api/products/${id}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+        body: fd
+      })
+    } else {
+      const payload = {
+        ten_san_pham: ten,
+        mo_ta,
+        gia,                                    // gửi số nguyên (đã bỏ dấu phẩy)
+        hinh_anh: urlText ? [urlText] : [],
+        danh_muc_id
+      }
+      r = await fetch(`/api/products/${id}/`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify(payload)
+      })
+    }
+
     if (r.ok) {
       window.location = "{% url 'shop:admin_products' %}"
     } else {
       const err = await r.json().catch(() => ({}))
       alert(err.error || 'Lưu thất bại')
-    }
-  })
-
-  // preview khi người dùng gõ vào ô input
-  document.getElementById('hinh_anh').addEventListener('input', function () {
-    const val = this.value.trim()
-    const preview = document.getElementById('preview_img')
-    if (val) {
-      preview.src = '/media/' + val
-      preview.style.display = 'block'
-    } else {
-      preview.style.display = 'none'
     }
   })
 })()
