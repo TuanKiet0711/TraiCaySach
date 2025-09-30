@@ -1,0 +1,83 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Xóa đơn hàng{% endblock %}
+{% block page_title %}Xóa đơn hàng{% endblock %}
+
+{% block content %}
+<div class="card border-danger shadow-sm">
+  <div class="card-body">
+    <h5 class="text-danger mb-3">Bạn chắc chắn muốn xóa đơn hàng này?</h5>
+
+    <div class="mb-2">
+      <span class="text-muted">ID:</span>
+      <code class="small">{{ order_id }}</code>
+    </div>
+
+    <dl class="row mb-0">
+      <dt class="col-sm-4">Tài khoản</dt>
+      <dd class="col-sm-8" id="oTk">—</dd>
+
+      <dt class="col-sm-4">Sản phẩm</dt>
+      <dd class="col-sm-8" id="oSp">—</dd>
+
+      <dt class="col-sm-4">Số lượng</dt>
+      <dd class="col-sm-8" id="oSl">—</dd>
+
+      <dt class="col-sm-4">Đơn giá</dt>
+      <dd class="col-sm-8"><span id="oDg">—</span> <span class="text-muted">VNĐ</span></dd>
+
+      <dt class="col-sm-4">Tổng tiền</dt>
+      <dd class="col-sm-8"><span id="oTt">—</span> <span class="text-muted">VNĐ</span></dd>
+
+      <dt class="col-sm-4">Thanh toán</dt>
+      <dd class="col-sm-8" id="oPay">—</dd>
+
+      <dt class="col-sm-4">Trạng thái</dt>
+      <dd class="col-sm-8" id="oStatus">—</dd>
+
+      <dt class="col-sm-4">Ngày tạo</dt>
+      <dd class="col-sm-8" id="oDate">—</dd>
+    </dl>
+
+    <hr class="my-4"/>
+    <div class="d-flex flex-wrap gap-2">
+      <button id="btnDelete" class="btn btn-danger"><i class="bi bi-trash me-1"></i> Xóa</button>
+      <a class="btn btn-secondary" href="{% url 'shop:admin_orders' %}">Hủy</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+;(async function(){
+  const id="{{ order_id }}";
+  const $=(id)=>document.getElementById(id);
+  function getCookie(name){let v=null;if(document.cookie)for(let c of document.cookie.split(';')){c=c.trim();if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}}return v}
+  const CSRF=getCookie('csrftoken');
+  const fmt=(n)=>{const x=parseInt(n,10);return isNaN(x)?'—':x.toLocaleString('vi-VN')}
+
+  const r=await fetch(`/api/orders/${id}/`);
+  if(r.ok){
+    const d=await r.json();
+    $('oTk').textContent = d.tai_khoan_ten || d.tai_khoan_id || '—';
+    $('oSp').textContent = d.san_pham_ten || d.san_pham_id || '—';
+    $('oSl').textContent = String(d.so_luong||'—');
+    $('oDg').textContent = fmt(d.don_gia);
+    $('oTt').textContent = fmt(d.tong_tien);
+    $('oPay').textContent = (d.phuong_thuc_thanh_toan||'').toUpperCase();
+    const st=d.trang_thai||'';
+    $('oStatus').textContent = st==='cho_xu_ly'?'Chờ xử lý':st==='dang_giao'?'Đang giao':st==='hoan_thanh'?'Hoàn thành':st==='da_huy'?'Đã hủy':'—';
+    $('oDate').textContent = (d.ngay_tao||'').replace('T',' ').slice(0,16);
+  }else{
+    document.querySelector('.card-body').insertAdjacentHTML('afterbegin','<div class="alert alert-danger">Không tìm thấy đơn hàng</div>');
+  }
+
+  $('btnDelete').addEventListener('click', async ()=>{
+    if(!confirm('Xóa đơn hàng này? Hành động không thể hoàn tác.')) return;
+    const k=await fetch(`/api/orders/${id}/`,{method:'DELETE',headers:{'X-CSRFToken':CSRF}});
+    if(k.ok){ window.location="{% url 'shop:admin_orders' %}"; }
+    else{ const e=await k.json().catch(()=>({})); alert(e.error||'Không thể xóa'); }
+  });
+})();
+</script>
+{% endblock %}

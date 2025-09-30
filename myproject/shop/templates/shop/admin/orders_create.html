@@ -1,0 +1,159 @@
+{% extends 'shop/admin/base_admin.html' %}
+{% block title %}Thêm đơn hàng{% endblock %}
+{% block page_title %}Thêm đơn hàng{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <form id="createOrderForm" autocomplete="off">
+      <!-- Tài khoản -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Tài khoản</label>
+        <input type="hidden" id="tai_khoan_id" required>
+        <div class="dropdown w-100">
+          <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+                  type="button" id="btnAccount" data-bs-toggle="dropdown" aria-expanded="false">
+            <span id="labelAccount">-- Chọn tài khoản --</span><span class="ms-2">▾</span>
+          </button>
+          <ul id="accountsMenu" class="dropdown-menu w-100 p-1" style="max-height:260px;overflow:auto;">
+            {% for a in accounts %}
+              <li><a class="dropdown-item" href="#" data-id="{{ a.id }}">{{ a.ten }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="form-text text-danger d-none" id="accError">Vui lòng chọn tài khoản</div>
+      </div>
+
+      <!-- Sản phẩm -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Sản phẩm</label>
+        <input type="hidden" id="san_pham_id" required>
+        <div class="dropdown w-100">
+          <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+                  type="button" id="btnProduct" data-bs-toggle="dropdown" aria-expanded="false">
+            <span id="labelProduct">-- Chọn sản phẩm --</span><span class="ms-2">▾</span>
+          </button>
+          <ul id="productsMenu" class="dropdown-menu w-100 p-1" style="max-height:260px;overflow:auto;">
+            {% for p in products %}
+              <li><a class="dropdown-item" href="#" data-id="{{ p.id }}">{{ p.ten }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="form-text text-danger d-none" id="spError">Vui lòng chọn sản phẩm</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" for="so_luong">Số lượng</label>
+          <input type="number" id="so_luong" class="form-control" min="1" step="1" value="1" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" for="don_gia">Đơn giá (VNĐ)</label>
+          <input type="text" id="don_gia" class="form-control" inputmode="numeric" pattern="[0-9,]*" placeholder="85,000" required>
+          <div class="form-text">Chọn sản phẩm sẽ tự điền giá (có thể sửa).</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tổng tiền</label>
+          <div class="form-control bg-light" id="tong_tien_preview" style="pointer-events:none">0 đ</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" for="pttt">Phương thức thanh toán</label>
+          <select id="pttt" class="form-select">
+            <option value="cod" selected>COD</option>
+            <option value="bank">Chuyển khoản</option>
+            <option value="momo">Momo</option>
+            <option value="card">Thẻ</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" for="trang_thai">Trạng thái</label>
+          <select id="trang_thai" class="form-select">
+            <option value="cho_xu_ly" selected>Chờ xử lý</option>
+            <option value="dang_giao">Đang giao</option>
+            <option value="hoan_thanh">Hoàn thành</option>
+            <option value="da_huy">Đã hủy</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-success" type="submit">Lưu</button>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_orders' %}">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+;(function(){
+  // ---- CSRF ----
+  function getCookie(name){let v=null;if(document.cookie)
+    for(let c of document.cookie.split(';')){c=c.trim();if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}}return v}
+  const CSRF=getCookie('csrftoken');
+
+  const $ = (id)=>document.getElementById(id);
+  const accHidden=$('tai_khoan_id'), accLabel=$('labelAccount'), accErr=$('accError');
+  const spHidden=$('san_pham_id'), spLabel=$('labelProduct'), spErr=$('spError');
+  const accMenu=$('accountsMenu'), spMenu=$('productsMenu');
+
+  // chọn TK
+  accMenu.addEventListener('click',e=>{
+    const item=e.target.closest('.dropdown-item'); if(!item) return; e.preventDefault();
+    accHidden.value=item.dataset.id||''; accLabel.textContent=item.textContent.trim(); accErr.classList.add('d-none');
+  });
+  // chọn SP -> auto lấy giá
+  spMenu.addEventListener('click', async (e)=>{
+    const item=e.target.closest('.dropdown-item'); if(!item) return; e.preventDefault();
+    spHidden.value=item.dataset.id||''; spLabel.textContent=item.textContent.trim(); spErr.classList.add('d-none');
+    if(spHidden.value){
+      const r=await fetch(`/api/products/${spHidden.value}/`); if(r.ok){const d=await r.json();
+        if(typeof d.gia==='number'){ $('don_gia').value = formatComma(String(d.gia)); updateTotal(); }
+      }
+    }
+  });
+
+  // ---- tiền tệ ----
+  function formatComma(s){const clean=(s||'').replace(/[^\d]/g,''); return clean?clean.replace(/\B(?=(\d{3})+(?!\d))/g,','):''}
+  function parseMoney(s){const n=parseInt(String(s||'').replace(/[^\d]/g,''),10); return isNaN(n)?0:n}
+  function updateTotal(){
+    const sl=parseInt(($('so_luong').value||'1'),10)||1;
+    const dg=parseMoney($('don_gia').value);
+    $('tong_tien_preview').textContent=(sl*dg).toLocaleString('vi-VN')+' đ';
+  }
+  $('so_luong').addEventListener('input',updateTotal);
+  const giaInput=$('don_gia');
+  giaInput.addEventListener('input',e=>{
+    const f=formatComma(e.target.value); if(f!==e.target.value){const end=f.length; e.target.value=f; e.target.setSelectionRange(end,end)}
+    updateTotal();
+  });
+  giaInput.addEventListener('blur',e=>{e.target.value=formatComma(e.target.value); updateTotal();});
+  updateTotal();
+
+  // ---- submit ----
+  $('createOrderForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const tai_khoan_id=accHidden.value.trim(); const san_pham_id=spHidden.value.trim();
+    if(!tai_khoan_id){accErr.classList.remove('d-none'); return}
+    if(!san_pham_id){spErr.classList.remove('d-none'); return}
+
+    const payload={
+      tai_khoan_id, san_pham_id,
+      so_luong: parseInt($('so_luong').value,10)||1,
+      don_gia: parseMoney($('don_gia').value),
+      phuong_thuc_thanh_toan: $('pttt').value,
+      trang_thai: $('trang_thai').value
+    };
+    const r=await fetch("{% url 'shop:api_orders_create' %}",{
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(payload)
+    });
+    if(r.ok){ window.location="{% url 'shop:admin_orders' %}"; }
+    else{ const err=await r.json().catch(()=>({})); alert(err.error||'Tạo đơn hàng thất bại'); }
+  });
+})();
+</script>
+{% endblock %}

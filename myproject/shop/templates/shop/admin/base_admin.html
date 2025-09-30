@@ -53,7 +53,7 @@
       <a class="btn {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}"
          href="{% url 'shop:admin_categories' %}"><i class="bi bi-columns-gap me-2"></i>Danh mục</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}"
-        href="{% url 'shop:admin_categories' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
+        href="{% url 'shop:admin_orders' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}"
          href="{% url 'shop:admin_accounts' %}"><i class="bi bi-people me-2"></i>Tài khoản</a>
 

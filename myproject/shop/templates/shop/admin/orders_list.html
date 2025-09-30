@@ -1,0 +1,201 @@
+{% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
+{% block title %}Đơn hàng · Admin{% endblock %}
+{% block page_title %}Đơn hàng{% endblock %}
+
+{% block content %}
+<style>
+  html, body {height: 100%; overflow: hidden;}
+  .admin-fixed {height: calc(100vh - 0px); display: flex; flex-direction: column; overflow: hidden;}
+  .toolbar-tight {margin-bottom:.5rem!important;}
+  .card-body-tight {padding:.5rem 1rem!important;}
+  .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
+
+  .searchbar { --h: 38px; flex:1 1 auto; }
+  .searchbar .inputbox {position:relative;flex:1 1 auto;min-width:260px;}
+  .searchbar .inputbox .icon {
+    position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    opacity:.65; color:#6c757d;
+  }
+  .searchbar .inputbox input.form-control {
+    height:var(--h); padding-left:38px; padding-right:40px;
+    border-radius:12px; border:1px solid rgba(0,0,0,.08);
+    box-shadow:0 6px 18px rgba(30,60,120,.06);
+  }
+  .searchbar .inputbox .btn-clear {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    border:none; background:transparent; opacity:.5;
+  }
+  .searchbar .btn-find {
+    height:var(--h);
+    background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
+    color:#fff; border:none; font-weight:600; border-radius:12px;
+    padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);
+    transition:transform .08s ease,filter .2s ease;
+  }
+  .btn-reset {border-radius:12px;height:var(--h);margin-left:8px;}
+  .select-tight {height:var(--h); border-radius:12px;}
+
+  .pagination-fixed {
+    position:sticky; bottom:0; background:#fff; border-top:1px solid rgba(0,0,0,.05);
+    padding:.5rem .75rem; display:flex; justify-content:flex-start; align-items:center;
+  }
+  .pagination-fixed .pagination {gap: 4px; margin-bottom:0;}
+  .pagination-fixed .page-link {
+    min-width: 34px; height: 34px; padding: 0.25rem 0.6rem; text-align:center;
+    line-height: 1.5; border-radius: 50% !important; color: #495057; border:none; background:#f8f9fa;
+    box-shadow: 0 2px 6px rgba(0,0,0,.05); transition: all .2s ease;
+  }
+  .pagination-fixed .page-link:hover { background:#4f8cff; color:#fff; }
+  .pagination-fixed .page-item.active .page-link {
+    background:#3b78ff; color:#fff; box-shadow:0 4px 12px rgba(60,120,240,.25);
+  }
+  .pagination-fixed .page-item.disabled .page-link { opacity:.5; pointer-events:none; background:#f1f1f1; }
+</style>
+
+<div class="admin-fixed">
+
+  <!-- Thanh tìm kiếm + lọc + thêm -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
+    <form id="searchForm" class="d-flex searchbar align-items-center gap-2" method="get" action="">
+      <div class="inputbox">
+        <i class="bi bi-search icon"></i>
+        <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}"
+               class="form-control" placeholder="Tìm theo ID đơn (ObjectId)…">
+        <button type="button" class="btn-clear d-none" id="btnClear" aria-label="Xóa tìm">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </div>
+
+      <select name="status" class="form-select select-tight" style="min-width:160px">
+        <option value="">Trạng thái: Tất cả</option>
+        <option value="cho_xu_ly"  {% if status == 'cho_xu_ly' %}selected{% endif %}>Chờ xử lý</option>
+        <option value="dang_giao"  {% if status == 'dang_giao' %}selected{% endif %}>Đang giao</option>
+        <option value="hoan_thanh" {% if status == 'hoan_thanh' %}selected{% endif %}>Hoàn thành</option>
+        <option value="da_huy"     {% if status == 'da_huy' %}selected{% endif %}>Đã hủy</option>
+      </select>
+
+      <select name="pay" class="form-select select-tight" style="min-width:160px">
+        <option value="">Thanh toán: Tất cả</option>
+        <option value="cod"   {% if pay == 'cod' %}selected{% endif %}>COD</option>
+        <option value="bank"  {% if pay == 'bank' %}selected{% endif %}>Chuyển khoản</option>
+        <option value="momo"  {% if pay == 'momo' %}selected{% endif %}>Momo</option>
+        <option value="card"  {% if pay == 'card' %}selected{% endif %}>Thẻ</option>
+      </select>
+
+      <select name="sort" class="form-select select-tight" style="min-width:160px">
+        <option value="newest"     {% if sort == 'newest' %}selected{% endif %}>Mới nhất</option>
+        <option value="oldest"     {% if sort == 'oldest' %}selected{% endif %}>Cũ nhất</option>
+        <option value="total_desc" {% if sort == 'total_desc' %}selected{% endif %}>Tổng tiền ↓</option>
+        <option value="total_asc"  {% if sort == 'total_asc' %}selected{% endif %}>Tổng tiền ↑</option>
+      </select>
+
+      <button class="btn btn-find" type="submit">
+        <i class="bi bi-funnel me-1"></i>Tìm
+      </button>
+      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_orders' %}">
+        <i class="bi bi-x-circle me-1"></i>Xóa lọc
+      </a>
+    </form>
+
+    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_order_create' %}">+ Thêm đơn hàng</a>
+  </div>
+
+  <!-- Bảng đơn hàng -->
+  <div class="card shadow-sm table-flex">
+    <div class="card-body card-body-tight">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:14%">ID</th>
+              <th style="width:14%">Tài khoản</th>
+              <th style="width:16%">Sản phẩm</th>
+              <th style="width:8%" class="text-end">SL</th>
+              <th style="width:10%" class="text-end">Đơn giá</th>
+              <th style="width:12%" class="text-end">Tổng tiền</th>
+              <th style="width:10%">Thanh toán</th>
+              <th style="width:10%">Trạng thái</th>
+              <th style="width:12%">Ngày tạo</th>
+              <th class="text-end" style="width:10%">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if items %}
+              {% for it in items %}
+                <tr>
+                  <td><a class="small" href="{% url 'shop:admin_order_detail' it.id %}"><code>{{ it.id }}</code></a></td>
+                  <td>{{ it.tai_khoan }}</td>
+                  <td>{{ it.san_pham }}</td>
+                  <td class="text-end">{{ it.so_luong|intcomma }}</td>
+                  <td class="text-end">{{ it.don_gia|intcomma }} đ</td>
+                  <td class="text-end fw-semibold">{{ it.tong_tien|intcomma }} đ</td>
+                  <td class="text-muted">{{ it.phuong_thuc_thanh_toan|upper }}</td>
+                  <td>
+                    {% if it.trang_thai == 'cho_xu_ly' %}<span class="badge text-bg-secondary">Chờ xử lý</span>{% endif %}
+                    {% if it.trang_thai == 'dang_giao' %}<span class="badge text-bg-info">Đang giao</span>{% endif %}
+                    {% if it.trang_thai == 'hoan_thanh' %}<span class="badge text-bg-success">Hoàn thành</span>{% endif %}
+                    {% if it.trang_thai == 'da_huy' %}<span class="badge text-bg-danger">Đã hủy</span>{% endif %}
+                  </td>
+                  <td class="text-muted small">{{ it.ngay_tao|date:"Y-m-d H:i" }}</td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_order_edit' it.id %}">
+                      <i class="bi bi-pencil"></i> Sửa
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_order_delete' it.id %}">
+                      <i class="bi bi-trash"></i> Xóa
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+              {% for _ in placeholders %}
+                <tr><td colspan="10">&nbsp;</td></tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="10" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+              {% for _ in placeholders %}
+                <tr><td colspan="10">&nbsp;</td></tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination-fixed w-100">
+        <div class="me-3 text-muted small">Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục</div>
+        <nav aria-label="Pagination">
+          <ul class="pagination mb-0">
+            <li class="page-item {% if not has_prev %}disabled{% endif %}">
+              <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">‹</a>
+            </li>
+            {% for p in page_numbers %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ p }}</a>
+              </li>
+            {% endfor %}
+            <li class="page-item {% if not has_next %}disabled{% endif %}">
+              <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">›</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const qInput=document.getElementById('qInput');
+  const btnClear=document.getElementById('btnClear');
+  const form=document.getElementById('searchForm');
+  function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
+  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();});
+  qInput.addEventListener('input',toggleClear);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
+  });
+  toggleClear();
+})();
+</script>
+{% endblock %}

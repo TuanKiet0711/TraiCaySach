@@ -7,6 +7,12 @@ from .views.cart_page import cart_page
 # ====== API views (Danh mục – JSON) ======
 from .views import danhmuc_view as dm_api
 
+# ====== API views (Đơn hàng – JSON) ======
+from .views import donhang_view as dhv
+
+# ====== Admin Panel views (Đơn hàng – HTML) ======
+from .views import donhang as dh
+
 # ====== API views (Sản phẩm – JSON) ======
 from .views import sanpham_view as spv
 from .views.cart_api import (
@@ -48,6 +54,18 @@ urlpatterns = [
     path("api/cart/items/<str:id>/", cart_update_item, name="cart_update_item"),
     path("api/cart/items/<str:id>/delete/", cart_delete_item, name="cart_delete_item"),
     path("api/cart/clear/", cart_clear, name="cart_clear"),
+    
+    # ====== API (JSON) – ĐƠN HÀNG ======
+    path("api/orders/", dhv.orders_list, name="api_orders_list"),               # GET
+    path("api/orders/create/", dhv.orders_create, name="api_orders_create"),    # POST
+    path("api/orders/<str:id>/", dhv.order_detail, name="api_order_detail"),    # GET/PUT/DELETE or POST _method=PUT
+
+    # ====== Admin Panel (HTML) – ĐƠN HÀNG ======
+    path("admin-panel/orders/", dh.orders_list, name="admin_orders"),
+    path("admin-panel/orders/create/", dh.order_create, name="admin_order_create"),
+    path("admin-panel/orders/<str:id>/edit/", dh.order_edit, name="admin_order_edit"),
+    path("admin-panel/orders/<str:id>/delete/", dh.order_delete, name="admin_order_delete"),
+    path("admin-panel/orders/<str:id>/", dh.order_detail_page, name="admin_order_detail"),
 
     # ====== Accounts API ======
     path("api/accounts/", tai_khoan_view.accounts_list, name="api_accounts_list"),

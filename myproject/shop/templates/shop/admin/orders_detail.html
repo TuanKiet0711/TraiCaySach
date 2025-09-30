@@ -1,0 +1,90 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Chi tiết đơn hàng{% endblock %}
+{% block page_title %}Chi tiết đơn hàng{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <div class="text-muted small">Mã đơn</div>
+        <div><code class="small">{{ order_id }}</code></div>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="{% url 'shop:admin_order_edit' order_id %}">
+          <i class="bi bi-pencil"></i> Sửa
+        </a>
+        <a class="btn btn-outline-danger" href="{% url 'shop:admin_order_delete' order_id %}">
+          <i class="bi bi-trash"></i> Xóa
+        </a>
+        <a class="btn btn-secondary" href="{% url 'shop:admin_orders' %}">Quay lại</a>
+      </div>
+    </div>
+
+    <hr/>
+
+    <div class="row g-4">
+      <div class="col-md-6">
+        <h6 class="mb-3">Thông tin chung</h6>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Tài khoản</dt>
+          <dd class="col-sm-8" id="oTk">—</dd>
+
+          <dt class="col-sm-4">Sản phẩm</dt>
+          <dd class="col-sm-8" id="oSp">—</dd>
+
+          <dt class="col-sm-4">Số lượng</dt>
+          <dd class="col-sm-8" id="oSl">—</dd>
+
+          <dt class="col-sm-4">Đơn giá</dt>
+          <dd class="col-sm-8"><span id="oDg">—</span> <span class="text-muted">VNĐ</span></dd>
+
+          <dt class="col-sm-4">Tổng tiền</dt>
+          <dd class="col-sm-8 fw-semibold"><span id="oTt">—</span> <span class="text-muted">VNĐ</span></dd>
+        </dl>
+      </div>
+      <div class="col-md-6">
+        <h6 class="mb-3">Thanh toán & Trạng thái</h6>
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Phương thức</dt>
+          <dd class="col-sm-8" id="oPay">—</dd>
+
+          <dt class="col-sm-4">Trạng thái</dt>
+          <dd class="col-sm-8" id="oStatus">—</dd>
+
+          <dt class="col-sm-4">Ngày tạo</dt>
+          <dd class="col-sm-8" id="oDate">—</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+;(async function(){
+  const id="{{ order_id }}";
+  const $=(id)=>document.getElementById(id);
+  const fmt=(n)=>{const x=parseInt(n,10);return isNaN(x)?'—':x.toLocaleString('vi-VN')}
+
+  const r=await fetch(`/api/orders/${id}/`);
+  if(!r.ok){ alert('Không tìm thấy đơn'); window.location="{% url 'shop:admin_orders' %}"; return; }
+  const d=await r.json();
+
+  $('oTk').textContent = d.tai_khoan_ten || d.tai_khoan_id || '—';
+  $('oSp').textContent = d.san_pham_ten || d.san_pham_id || '—';
+  $('oSl').textContent = String(d.so_luong||'—');
+  $('oDg').textContent = fmt(d.don_gia);
+  $('oTt').textContent = fmt(d.tong_tien);
+  $('oPay').textContent = (d.phuong_thuc_thanh_toan||'').toUpperCase();
+  const st=d.trang_thai||'';
+  $('oStatus').innerHTML =
+    st==='cho_xu_ly' ? '<span class="badge text-bg-secondary">Chờ xử lý</span>' :
+    st==='dang_giao' ? '<span class="badge text-bg-info">Đang giao</span>' :
+    st==='hoan_thanh'? '<span class="badge text-bg-success">Hoàn thành</span>' :
+    st==='da_huy'    ? '<span class="badge text-bg-danger">Đã hủy</span>' : '—';
+  $('oDate').textContent = (d.ngay_tao||'').replace('T',' ').slice(0,16);
+})();
+</script>
+{% endblock %}
