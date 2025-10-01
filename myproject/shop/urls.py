@@ -10,6 +10,8 @@ from .views import danhmuc_view as dm_api
 # ====== API views (Đơn hàng – JSON) ======
 from .views import donhang_view as dhv
 
+from .views import donhang_site as dsite
+
 # ====== Admin Panel views (Đơn hàng – HTML) ======
 from .views import donhang as dh
 
@@ -66,6 +68,11 @@ urlpatterns = [
     path("admin-panel/orders/<str:id>/edit/", dh.order_edit, name="admin_order_edit"),
     path("admin-panel/orders/<str:id>/delete/", dh.order_delete, name="admin_order_delete"),
     path("admin-panel/orders/<str:id>/", dh.order_detail_page, name="admin_order_detail"),
+    
+    # Trang + API Đơn hàng của chính user (customer)
+    path("don-hang-cua-toi/", dsite.my_orders_page, name="my_orders_page"),
+    path("api/my-orders/", dsite.api_my_orders, name="api_my_orders"),
+    path("api/my-orders/count/", dsite.api_my_orders_count, name="api_my_orders_count"),
 
     # ====== Accounts API ======
     path("api/accounts/", tai_khoan_view.accounts_list, name="api_accounts_list"),

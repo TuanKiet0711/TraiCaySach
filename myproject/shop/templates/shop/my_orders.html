@@ -1,0 +1,61 @@
+{% extends "shop/base.html" %}
+{% load humanize %}
+{% block title %}Đơn hàng của tôi{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Đơn hàng của tôi</h4>
+    <div>
+      <a class="btn btn-sm {% if paid_only %}btn-primary{% else %}btn-light{% endif %}" href="{% url 'shop:my_orders_page' %}?paid=1">
+        Chỉ đơn đã thanh toán
+      </a>
+      <a class="btn btn-sm {% if not paid_only %}btn-primary{% else %}btn-light{% endif %}" href="{% url 'shop:my_orders_page' %}?paid=0">
+        Tất cả đơn
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width:14%">Ngày</th>
+              <th>Sản phẩm</th>
+              <th class="text-end" style="width:10%">SL</th>
+              <th class="text-end" style="width:12%">Đơn giá</th>
+              <th class="text-end" style="width:14%">Tổng tiền</th>
+              <th style="width:14%">Thanh toán</th>
+              <th style="width:14%">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if items %}
+              {% for o in items %}
+                <tr>
+                  <td class="text-muted small">{{ o.ngay_tao|slice:":16"|cut:"T"|default:"" }}</td>
+                  <td>{{ o.san_pham_ten|default:"Sản phẩm" }}</td>
+                  <td class="text-end">{{ o.so_luong|intcomma }}</td>
+                  <td class="text-end">{{ o.don_gia|intcomma }} đ</td>
+                  <td class="text-end fw-semibold">{{ o.tong_tien|intcomma }} đ</td>
+                  <td class="text-muted">{{ o.phuong_thuc_thanh_toan|upper }}</td>
+                  <td>
+                    {% if o.trang_thai == 'hoan_thanh' %}<span class="badge text-bg-success">Hoàn thành</span>{% endif %}
+                    {% if o.trang_thai == 'dang_giao'  %}<span class="badge text-bg-info">Đang giao</span>{% endif %}
+                    {% if o.trang_thai == 'da_huy'     %}<span class="badge text-bg-danger">Đã hủy</span>{% endif %}
+                    {% if o.trang_thai == 'cho_xu_ly'  %}<span class="badge text-bg-secondary">Chờ xử lý</span>{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-4">Chưa có đơn hàng</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
