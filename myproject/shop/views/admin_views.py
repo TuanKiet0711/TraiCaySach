@@ -1,21 +1,65 @@
 from django.shortcuts import render
-# from django.contrib.admin.views.decorators import staff_member_required  # ❌ bỏ
 from ..database import san_pham, danh_muc, don_hang, tai_khoan
 from math import ceil
 from bson import ObjectId
-from .admin_required import admin_required  # ✅ thêm
+from .admin_required import admin_required
+from django.utils import timezone
 
 PAGE_SIZE = 6
 
 # =================== DASHBOARD =================== #
 @admin_required
 def dashboard(request):
+    # Số liệu tổng
+    total_products   = san_pham.count_documents({})
+    total_categories = danh_muc.count_documents({})
+    total_orders     = don_hang.count_documents({})
+    total_accounts   = tai_khoan.count_documents({})
+
+    # --- Báo cáo doanh thu ---
+    filter_revenue = {
+        "trang_thai": {"$nin": ["da_huy"]}  # lấy tất cả trừ hủy
+    }
+
+    orders = don_hang.find(filter_revenue, {"tong_tien": 1, "ngay_tao": 1}) 
+
+    revenue_by_day, revenue_by_month = {}, {}
+    total_revenue = 0
+
+    for o in orders:
+        ngay = o.get("ngay_tao")
+        if not ngay:
+            continue
+
+        # Nếu ngay là string thì convert
+        if isinstance(ngay, str):
+            try:
+                ngay = datetime.fromisoformat(ngay[:19])
+            except:
+                continue
+
+        total = int(o.get("tong_tien", 0))
+        total_revenue += total
+
+        day_key = ngay.strftime("%Y-%m-%d")
+        month_key = ngay.strftime("%Y-%m")
+
+        revenue_by_day[day_key] = revenue_by_day.get(day_key, 0) + total
+        revenue_by_month[month_key] = revenue_by_month.get(month_key, 0) + total
+
+    days = sorted(revenue_by_day.keys())
+    months = sorted(revenue_by_month.keys())
+
     ctx = {
         "total_products": san_pham.count_documents({}),
         "total_categories": danh_muc.count_documents({}),
         "total_orders": don_hang.count_documents({}),
         "total_accounts": tai_khoan.count_documents({}),
+        "total_revenue": total_revenue,
+        "revenue_days":   [{"date": d, "total": revenue_by_day[d]} for d in days],
+        "revenue_months": [{"month": m, "total": revenue_by_month[m]} for m in months],
     }
+
     return render(request, "shop/admin/dashboard.html", ctx)
 
 # =================== CATEGORIES =================== #
@@ -43,10 +87,7 @@ def categories_list(request):
         .skip(skip)
         .limit(PAGE_SIZE)
     )
-    items = [
-        {"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc") or "Danh mục"}
-        for dm in cursor
-    ]
+    items = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc") or "Danh mục"} for dm in cursor]
 
     placeholders = max(0, PAGE_SIZE - len(items))
     has_prev = page > 1

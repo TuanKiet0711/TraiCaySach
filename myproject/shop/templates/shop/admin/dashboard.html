@@ -1,4 +1,6 @@
 {% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
+
 {% block title %}Bảng điều khiển · Admin{% endblock %}
 {% block page_title %}Bảng điều khiển{% endblock %}
 
@@ -96,5 +98,80 @@
       </div>
     </div>
   </div>
+  <div class="col-md-3">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="text-muted small mb-1">Tổng doanh thu</div>
+      <div class="fs-3 fw-bold">{{ total_revenue|intcomma }} đ</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<hr class="my-4">
+
+<h4 class="mb-3">Báo cáo doanh thu</h4>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="fw-bold">Doanh thu theo ngày</h6>
+        <canvas id="chartDay" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="fw-bold">Doanh thu theo tháng</h6>
+        <canvas id="chartMonth" height="200"></canvas>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  const days = {{ revenue_days|safe }};
+  const months = {{ revenue_months|safe }};
+
+  console.log("Revenue days:", days);
+  console.log("Revenue months:", months);
+
+  if (days.length > 0) {
+    new Chart(document.getElementById('chartDay'), {
+      type: 'line',
+      data: {
+        labels: days.map(d => d.date),
+        datasets: [{
+          label: 'Doanh thu (VNĐ)',
+          data: days.map(d => d.total),
+          borderColor: '#198754',
+          backgroundColor: 'rgba(25,135,84,0.2)',
+          tension: 0.3,
+          fill: true
+        }]
+      }
+    });
+  }
+
+  if (months.length > 0) {
+    new Chart(document.getElementById('chartMonth'), {
+      type: 'bar',
+      data: {
+        labels: months.map(m => m.month),
+        datasets: [{
+          label: 'Doanh thu (VNĐ)',
+          data: months.map(m => m.total),
+          backgroundColor: '#0d6efd'
+        }]
+      }
+    });
+  }
+</script>
+{% endblock %}
+
