@@ -1,0 +1,151 @@
+{% extends "shop/base.html" %}
+{% load static %}
+{% block title %}Đặt hàng{% endblock %}
+
+{% block content %}
+<section class="py-4">
+  <div class="container">
+    <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
+
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Thông tin nhận hàng</h5>
+
+            <form id="checkoutForm" class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Họ và tên</label>
+                <input name="ho_ten" type="text" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Số điện thoại</label>
+                <input name="sdt" type="tel" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Địa chỉ</label>
+                <input name="dia_chi" type="text" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Ghi chú</label>
+                <textarea name="ghi_chu" class="form-control" rows="2"></textarea>
+              </div>
+             <div class="col-md-6">
+  <label class="form-label">Phương thức thanh toán</label>
+  <select name="phuong_thuc_thanh_toan" class="form-select">
+    <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
+    <option value="chuyen_khoan">Chuyển khoản</option>
+  </select>
+</div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title">Tóm tắt</h5>
+            <div id="cartList" class="small mb-2 text-muted"></div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Tạm tính</span>
+              <span id="sumSubtotal">0</span>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between fw-semibold fs-5">
+              <span>Tổng cộng</span>
+              <span id="sumTotal">0</span>
+            </div>
+            <button id="btnPlaceOrder" class="btn btn-success w-100 mt-3" disabled>
+              <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
+            </button>
+            <a href="{% url 'shop:cart_page' %}" class="btn btn-outline-success w-100 mt-2">
+              ← Quay lại giỏ hàng
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
+  <div class="d-flex">
+    <div class="toast-body"></div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(() => {
+  const money = v => (Number(v||0)).toLocaleString('vi-VN') + ' VNĐ';
+  const toastEl = document.getElementById('toast');
+  function toast(msg, error=false){
+    toastEl.classList.remove('bg-success','bg-danger');
+    toastEl.classList.add(error?'bg-danger':'bg-success');
+    toastEl.querySelector('.toast-body').textContent = msg;
+    new bootstrap.Toast(toastEl, {delay:2000}).show();
+  }
+
+  const cartList = document.getElementById('cartList');
+  const sumSubtotal = document.getElementById('sumSubtotal');
+  const sumTotal = document.getElementById('sumTotal');
+  const btnPlace = document.getElementById('btnPlaceOrder');
+  const form = document.getElementById('checkoutForm');
+
+  async function loadCart(){
+    const res = await fetch('/api/cart/?include_product=1');
+    if(!res.ok){ cartList.innerHTML = 'Giỏ hàng trống hoặc chưa đăng nhập.'; btnPlace.disabled = true; return; }
+    const data = await res.json();
+    const items = data.items||[];
+    if(!items.length){ cartList.innerHTML = 'Giỏ hàng trống.'; btnPlace.disabled = true; return; }
+    btnPlace.disabled = false;
+
+    let html = '', subtotal = 0;
+    items.forEach(it=>{
+      const sp = it.san_pham||{};
+      subtotal += it.tong_tien||0;
+      html += `<div class="d-flex justify-content-between">
+                 <span>${(sp.ten_san_pham||'SP')} × ${it.so_luong}</span>
+                 <span class="fw-semibold">${money(it.tong_tien)}</span>
+               </div>`;
+    });
+    cartList.innerHTML = html;
+    sumSubtotal.textContent = money(subtotal);
+    sumTotal.textContent = money(subtotal);
+  }
+
+  document.getElementById('btnPlaceOrder').addEventListener('click', async ()=>{
+    const fd = new FormData(form);
+    const payload = {
+      use_cart: true,
+      phuong_thuc_thanh_toan: fd.get('phuong_thuc_thanh_toan') || 'cod',
+      ho_ten: (fd.get('ho_ten')||'').trim(),
+      sdt: (fd.get('sdt')||'').trim(),
+      dia_chi: (fd.get('dia_chi')||'').trim(),
+      ghi_chu: (fd.get('ghi_chu')||'').trim(),
+    };
+    if(!payload.ho_ten || !payload.sdt || !payload.dia_chi){
+      toast('Vui lòng điền đủ họ tên, SĐT, địa chỉ', true); return;
+    }
+    const res = await fetch('/api/orders/checkout/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(res.ok){
+      toast('Đặt hàng thành công!');
+      setTimeout(()=>{ window.location.href = "{% url 'shop:my_orders_page' %}"; }, 800);
+    }else{
+      let err = {}; try{ err = await res.json(); }catch(_){}
+      toast('Lỗi đặt hàng: ' + (err.error || res.status), true);
+    }
+  });
+
+  loadCart();
+})();
+</script>
+{% endblock %}

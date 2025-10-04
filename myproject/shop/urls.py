@@ -20,7 +20,7 @@ from .views import sanpham_view as spv
 from .views.cart_api import (
     cart_get, cart_add_item, cart_update_item, cart_delete_item, cart_clear
 )
-
+from .views import checkout_page
 # ====== Admin Panel views (HTML) ======
 from .views import admin_views as av
 from .views import tai_khoan_view
@@ -57,10 +57,12 @@ urlpatterns = [
     path("api/cart/items/<str:id>/delete/", cart_delete_item, name="cart_delete_item"),
     path("api/cart/clear/", cart_clear, name="cart_clear"),
     
-    # ====== API (JSON) – ĐƠN HÀNG ======
-    path("api/orders/", dhv.orders_list, name="api_orders_list"),               # GET
-    path("api/orders/create/", dhv.orders_create, name="api_orders_create"),    # POST
-    path("api/orders/<str:id>/", dhv.order_detail, name="api_order_detail"),    # GET/PUT/DELETE or POST _method=PUT
+   # ====== API (JSON) – ĐƠN HÀNG ======
+path("api/orders/", dhv.orders_list, name="api_orders_list"),                 # GET
+path("api/orders/create/", dhv.orders_create, name="api_orders_create"),      # POST
+path("api/orders/checkout/", dhv.orders_checkout, name="api_orders_checkout"),# POST
+path("api/orders/<str:id>/", dhv.order_detail, name="api_order_detail"),      # GET/PUT/DELETE
+# GET/PUT/DELETE or POST _method=PUT
 
     # ====== Admin Panel (HTML) – ĐƠN HÀNG ======
     path("admin-panel/orders/", dh.orders_list, name="admin_orders"),
@@ -73,6 +75,7 @@ urlpatterns = [
     path("don-hang-cua-toi/", dsite.my_orders_page, name="my_orders_page"),
     path("api/my-orders/", dsite.api_my_orders, name="api_my_orders"),
     path("api/my-orders/count/", dsite.api_my_orders_count, name="api_my_orders_count"),
+    
 
     # ====== Accounts API ======
     path("api/accounts/", tai_khoan_view.accounts_list, name="api_accounts_list"),
@@ -101,4 +104,5 @@ urlpatterns = [
     path("admin-panel/accounts/create/", av.account_create, name="admin_account_create"),
     path("admin-panel/accounts/<str:id>/edit/", av.account_edit, name="admin_account_edit"),
     path("admin-panel/accounts/<str:id>/delete/", av.account_delete, name="admin_account_delete"),
+    path("checkout/", checkout_page.checkout_page, name="checkout"),
 ]

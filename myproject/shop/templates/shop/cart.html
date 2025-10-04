@@ -70,7 +70,7 @@
   </div>
 </section>
 
-<!-- Toast thông báo nhỏ (chỉ dùng khi cần báo lỗi / clear all / checkout demo) -->
+<!-- Toast -->
 <div id="cartToast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
   <div class="d-flex">
     <div class="toast-body"></div>
@@ -106,7 +106,7 @@
 
   // Load giỏ
   async function loadCart() {
-    const res = await fetch('/api/cart?include_product=1', { method: 'GET' });
+    const res = await fetch('/api/cart/?include_product=1', { method: 'GET' });
     if (res.status === 400 || res.status === 401) {
       elWrap.classList.add('d-none');
       elEmpty.classList.remove('d-none');
@@ -114,7 +114,6 @@
     }
     const data = await res.json();
     renderCart(data.items || [], data.tong_tien || 0);
-    // sau khi render, cập nhật badge theo count mới
     if (window.updateCartBadge) window.updateCartBadge((data.items || []).length);
   }
 
@@ -170,7 +169,7 @@
     btnCheckout.disabled = false;
   }
 
-  // Delegation: +/- , đổi qty, xóa
+  // +/- / đổi qty / xóa
   elBody.addEventListener('click', async (e) => {
     const tr = e.target.closest('tr');
     if (!tr) return;
@@ -199,34 +198,28 @@
     }
   });
 
-  // Clear cart – ẩn badge ngay lập tức
+  // Clear cart – ẩn badge ngay
   btnClear.addEventListener('click', async () => {
     if (!confirm('Bạn chắc muốn xóa toàn bộ giỏ hàng?')) return;
-    // Ẩn badge ngay (không chờ API/Reload)
     if (window.hideCartBadge) window.hideCartBadge();
 
     const res = await fetch('/api/cart/clear/', { method: 'DELETE' });
     if (res.ok) {
-      // Im lặng phần badge rồi, chỉ render lại list
       loadCart();
     } else {
       const err = await safeJson(res);
       showToast('Không thể xóa giỏ hàng' + (err.error ? (': ' + err.error) : ''), true);
-      // Nếu lỗi, refresh lại badge từ server để không bị sai
       if (window.refreshCartBadge) window.refreshCartBadge();
     }
   });
 
-  // ====== Silent update/delete (chỉ báo lỗi khi cần) ======
   async function updateQuantity(id, qty) {
     const res = await fetch(`/api/cart/items/${id}/`, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ so_luong: qty })
     });
-    if (res.status === 204) {
-      return loadCart();
-    }
+    if (res.status === 204) return loadCart();
     if (!res.ok) {
       const err = await safeJson(res);
       showToast('Lỗi: ' + (err.error || res.status), true);
@@ -244,16 +237,17 @@
       showToast('Lỗi: ' + (err.error || res.status), true);
     }
   }
-  // ================================================
 
   async function safeJson(res) {
     try { return await res.json(); } catch(e) { return {}; }
   }
 
-  // (Optional) Checkout demo
+  // ✅ CHỈ ĐIỀU HƯỚNG SANG FORM CHECKOUT — KHÔNG GỌI API ĐẶT HÀNG Ở ĐÂY
   document.getElementById('btnCheckout').addEventListener('click', () => {
-    // window.location.href = '/checkout/'; // khi bạn tạo route
-    showToast('Đi tới bước thanh toán...');
+    // Dùng reverse name:
+    // window.location.href = "{% url 'shop:checkout' %}";
+    // Hoặc path tĩnh (an toàn khi test):
+    window.location.href = "/checkout/";
   });
 
   // init

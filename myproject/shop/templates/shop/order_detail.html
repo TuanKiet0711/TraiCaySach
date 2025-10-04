@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chi tiết đơn hàng</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-2xl font-bold mb-4">Chi tiết đơn hàng</h1>
+    <div id="info" class="mb-4"></div>
+    <table class="w-full border bg-white">
+      <thead>
+        <tr class="bg-gray-100">
+          <th class="p-2">Sản phẩm</th>
+          <th class="p-2">SL</th>
+          <th class="p-2">Đơn giá</th>
+          <th class="p-2">Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody id="itemsTable"></tbody>
+    </table>
+  </div>
+
+<script>
+async function loadOrder() {
+  const id = window.location.pathname.split("/").filter(Boolean).pop();
+  const res = await fetch(`/api/orders/${id}/`);
+  const o = await res.json();
+  document.getElementById("info").innerHTML = `
+    <p><b>Mã đơn:</b> ${o.id}</p>
+    <p><b>Ngày tạo:</b> ${new Date(o.ngay_tao).toLocaleString()}</p>
+    <p><b>Trạng thái:</b> ${o.trang_thai}</p>
+    <p><b>Tổng tiền:</b> ${o.tong_tien.toLocaleString()} đ</p>
+  `;
+  const tbody = document.getElementById("itemsTable");
+  tbody.innerHTML = "";
+  o.items.forEach(it => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="p-2">${it.san_pham_ten}</td>
+      <td class="p-2">${it.so_luong}</td>
+      <td class="p-2">${it.don_gia.toLocaleString()} đ</td>
+      <td class="p-2">${it.tong_tien.toLocaleString()} đ</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+loadOrder();
+</script>
+</body>
+</html>
