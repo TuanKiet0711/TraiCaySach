@@ -3,6 +3,14 @@
 {% block title %}Đặt hàng{% endblock %}
 
 {% block content %}
+<style>
+  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.35rem 0}
+  .checkout-cart-item .left{display:flex;align-items:center;gap:.6rem;min-width:0}
+  .checkout-cart-item .thumb{width:44px;height:44px;flex:0 0 44px;border-radius:.5rem;object-fit:cover;border:1px solid #e9ecef;background:#fff}
+  .checkout-cart-item .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .bank-hint code{background:#f8f9fa;border:1px dashed #e1e1e1;border-radius:.35rem;padding:.15rem .35rem}
+</style>
+
 <section class="py-4">
   <div class="container">
     <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
@@ -30,14 +38,62 @@
                 <label class="form-label">Ghi chú</label>
                 <textarea name="ghi_chu" class="form-control" rows="2"></textarea>
               </div>
-             <div class="col-md-6">
-  <label class="form-label">Phương thức thanh toán</label>
-  <select name="phuong_thuc_thanh_toan" class="form-select">
-    <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
-    <option value="chuyen_khoan">Chuyển khoản</option>
-  </select>
-</div>
+              <div class="col-md-6">
+                <label class="form-label">Phương thức thanh toán</label>
+                <select name="phuong_thuc_thanh_toan" id="paymentSelect" class="form-select">
+                  <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
+                  <option value="chuyen_khoan">Chuyển khoản</option>
+                </select>
+              </div>
 
+              <!-- Hướng dẫn chuyển khoản (ẩn/hiện theo select) -->
+              <div class="col-12" id="bankTransferWrap" style="display:none;">
+                <div class="alert alert-success-subtle border border-success-subtle bank-hint">
+                  <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-bank me-2"></i>
+                    <strong>Hướng dẫn chuyển khoản</strong>
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label mb-1">Ngân hàng</label>
+                      <div class="input-group">
+                        <input type="text" class="form-control" id="bankName" value="Vietcombank (VCB)" readonly>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankName" aria-label="Copy ngân hàng"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label mb-1">Số tài khoản</label>
+                      <div class="input-group">
+                        <input type="text" class="form-control" id="bankNo" value="0123456789" readonly>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankNo" aria-label="Copy số tài khoản"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label mb-1">Chủ tài khoản</label>
+                      <div class="input-group">
+                        <input type="text" class="form-control" id="bankOwner" value="CÔNG TY TNHH ABC" readonly>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankOwner" aria-label="Copy chủ tài khoản"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label mb-1">Nội dung chuyển khoản</label>
+                      <div class="input-group">
+                        <input type="text" class="form-control" id="bankMemo" value="Thanh toan don hang - SDT: " readonly>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankMemo" aria-label="Copy nội dung"><i class="bi bi-clipboard"></i></button>
+                      </div>
+                      <div class="form-text">* Nhập <strong>SĐT</strong> của bạn ở cuối nội dung để đối soát nhanh hơn. Trường này sẽ tự gợi ý theo SĐT bạn nhập.</div>
+                    </div>
+                  </div>
+
+                  <hr class="my-3">
+                  <ul class="small mb-0">
+                    <li>Chuyển đúng số tiền <strong>Tổng cộng</strong> hiển thị.</li>
+                    <li>Hệ thống sẽ xác nhận khi nhận được giao dịch và cập nhật trạng thái đơn.</li>
+                  </ul>
+                </div>
+              </div>
+              <!-- /Hướng dẫn chuyển khoản -->
             </form>
           </div>
         </div>
@@ -48,6 +104,7 @@
           <div class="card-body">
             <h5 class="card-title">Tóm tắt</h5>
             <div id="cartList" class="small mb-2 text-muted"></div>
+
             <div class="d-flex justify-content-between">
               <span class="text-muted">Tạm tính</span>
               <span id="sumSubtotal">0</span>
@@ -70,6 +127,7 @@
   </div>
 </section>
 
+<!-- Toast đơn giản -->
 <div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
   <div class="d-flex">
     <div class="toast-body"></div>
@@ -81,7 +139,12 @@
 {% block extra_js %}
 <script>
 (() => {
+  const MEDIA_URL = "{{ MEDIA_URL|default:'' }}";
+  const PLACEHOLDER_URL = "{% static 'images/placeholder/produce.png' %}";
+
   const money = v => (Number(v||0)).toLocaleString('vi-VN') + ' VNĐ';
+
+  // Toast
   const toastEl = document.getElementById('toast');
   function toast(msg, error=false){
     toastEl.classList.remove('bg-success','bg-danger');
@@ -90,12 +153,47 @@
     new bootstrap.Toast(toastEl, {delay:2000}).show();
   }
 
-  const cartList = document.getElementById('cartList');
+  // DOM refs
+  const cartList    = document.getElementById('cartList');
   const sumSubtotal = document.getElementById('sumSubtotal');
-  const sumTotal = document.getElementById('sumTotal');
-  const btnPlace = document.getElementById('btnPlaceOrder');
-  const form = document.getElementById('checkoutForm');
+  const sumTotal    = document.getElementById('sumTotal');
+  const btnPlace    = document.getElementById('btnPlaceOrder');
+  const form        = document.getElementById('checkoutForm');
+  const paySelect   = document.getElementById('paymentSelect');
+  const bankWrap    = document.getElementById('bankTransferWrap');
+  const memoInput   = document.getElementById('bankMemo');
 
+  // Toggle hướng dẫn chuyển khoản
+  function toggleBankGuide(){
+    const isBank = (paySelect.value === 'chuyen_khoan');
+    bankWrap.style.display = isBank ? '' : 'none';
+  }
+  paySelect.addEventListener('change', toggleBankGuide);
+  toggleBankGuide(); // init
+
+  // Tự ghép SĐT vào nội dung CK khi user nhập
+  form.querySelector('[name="sdt"]').addEventListener('input', (e) => {
+    const phone = (e.target.value || '').replace(/\\s+/g,'');
+    const base  = 'Thanh toan don hang - SDT: ';
+    memoInput.value = base + phone;
+  });
+
+  // Copy helper
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if(!btn) return;
+    const sel = btn.getAttribute('data-copy');
+    const input = document.querySelector(sel);
+    if(!input) return;
+    try{
+      await navigator.clipboard.writeText(input.value || '');
+      toast('Đã sao chép!', false);
+    }catch(_){
+      toast('Không sao chép được, vui lòng chọn và copy thủ công.', true);
+    }
+  });
+
+  // Load giỏ + render có ảnh
   async function loadCart(){
     const res = await fetch('/api/cart/?include_product=1');
     if(!res.ok){ cartList.innerHTML = 'Giỏ hàng trống hoặc chưa đăng nhập.'; btnPlace.disabled = true; return; }
@@ -107,17 +205,33 @@
     let html = '', subtotal = 0;
     items.forEach(it=>{
       const sp = it.san_pham||{};
-      subtotal += it.tong_tien||0;
-      html += `<div class="d-flex justify-content-between">
-                 <span>${(sp.ten_san_pham||'SP')} × ${it.so_luong}</span>
-                 <span class="fw-semibold">${money(it.tong_tien)}</span>
-               </div>`;
+      const imgs = sp.hinh_anh || sp.hinh_anh_urls || [];
+      let img = '';
+      if (Array.isArray(imgs) && imgs.length && imgs[0]) {
+        // Nếu API trả tên file, ghép MEDIA_URL; nếu là URL tuyệt đối thì giữ nguyên
+        const first = String(imgs[0]);
+        img = first.startsWith('http') ? first : (MEDIA_URL + first);
+      } else {
+        img = PLACEHOLDER_URL;
+      }
+      const name = sp.ten_san_pham || sp.ten || 'Sản phẩm';
+      subtotal += Number(it.tong_tien||0);
+
+      html += `
+        <div class="checkout-cart-item">
+          <div class="left">
+            <img class="thumb" src="${img}" alt="${name}">
+            <div class="name" title="${name}">${name} × ${it.so_luong}</div>
+          </div>
+          <div class="right fw-semibold">${money(it.tong_tien)}</div>
+        </div>`;
     });
     cartList.innerHTML = html;
     sumSubtotal.textContent = money(subtotal);
     sumTotal.textContent = money(subtotal);
   }
 
+  // Đặt hàng
   document.getElementById('btnPlaceOrder').addEventListener('click', async ()=>{
     const fd = new FormData(form);
     const payload = {
@@ -131,6 +245,7 @@
     if(!payload.ho_ten || !payload.sdt || !payload.dia_chi){
       toast('Vui lòng điền đủ họ tên, SĐT, địa chỉ', true); return;
     }
+
     const res = await fetch('/api/orders/checkout/', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},

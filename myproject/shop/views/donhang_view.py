@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from functools import wraps
 from bson import ObjectId
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 import json
 
 from pymongo.errors import WriteError, DuplicateKeyError
@@ -72,14 +72,46 @@ def _json_required(request):
     return None
 
 
+def _ensure_aware_utc(dt: datetime) -> datetime:
+    """
+    Nhận datetime có thể naive (từ Mongo).
+    - Nếu naive: coi là UTC và make_aware UTC.
+    - Nếu aware: giữ nguyên.
+    """
+    if dt is None:
+        return timezone.now().astimezone(dt_timezone.utc)
+    if timezone.is_naive(dt):
+        return dt.replace(tzinfo=dt_timezone.utc)
+    return dt.astimezone(dt_timezone.utc)
+
+
+def _to_local_iso(dt: datetime) -> str:
+    """
+    Convert datetime (có thể naive) sang local timezone (settings.TIME_ZONE)
+    rồi trả về ISO8601 có offset, ví dụ: 2025-10-05T08:30:00+07:00
+    """
+    aware_utc = _ensure_aware_utc(dt)
+    dt_local = timezone.localtime(aware_utc)
+    return dt_local.isoformat()
+
+
 def _parse_date(s: str, end=False):
+    """
+    Nhận chuỗi YYYY-MM-DD và trả về datetime có timezone (local TZ).
+    - end=False: đầu ngày local (00:00:00 local)
+    - end=True : đầu ngày kế tiếp local (để dùng $lt)
+    """
     try:
         d = datetime.strptime(s.strip(), "%Y-%m-%d")
-        if end:
-            return d + timedelta(days=1)
-        return d
     except Exception:
         return None
+
+    # make aware ở local TZ trước
+    d_local = timezone.make_aware(d)  # mặc định TIME_ZONE trong settings
+    if end:
+        d_local = d_local + timedelta(days=1)
+    # Mongo so sánh tốt nhất ở UTC
+    return d_local.astimezone(dt_timezone.utc)
 
 
 def _account_label(acc_doc):
@@ -115,6 +147,10 @@ def _serialize_order(doc, acc=None, sp_map=None):
             }
         )
 
+    # Chuẩn hoá ngay_tao -> ISO local có offset
+    raw_dt = doc.get("ngay_tao") or timezone.now()
+    ngay_tao_iso = _to_local_iso(raw_dt)
+
     return {
         "id": str(doc["_id"]),
         "tai_khoan_id": str(doc.get("tai_khoan_id")) if doc.get("tai_khoan_id") else None,
@@ -123,7 +159,7 @@ def _serialize_order(doc, acc=None, sp_map=None):
         "tong_tien": int(doc.get("tong_tien", 0)),
         "phuong_thuc_thanh_toan": doc.get("phuong_thuc_thanh_toan") or "cod",
         "trang_thai": doc.get("trang_thai") or "cho_xu_ly",
-        "ngay_tao": (doc.get("ngay_tao") or timezone.now()).isoformat(),
+        "ngay_tao": ngay_tao_iso,
     }
 
 
@@ -256,6 +292,7 @@ def orders_list(request):
 
     items = []
     for gr in rows:
+        # Chú ý: ngay_tao từ pipeline có thể là naive UTC → serialize xử lý trong _serialize_order
         doc = {
             "_id": gr["_id"],
             "tai_khoan_id": gr.get("tai_khoan_id"),
@@ -342,7 +379,7 @@ def orders_create(request):
         "tong_tien": tong_tien,
         "phuong_thuc_thanh_toan": pttt,
         "trang_thai": trang_thai,
-        "ngay_tao": timezone.now(),
+        "ngay_tao": timezone.now(),  # aware
     }
 
     # Nếu bật cờ -> thêm legacy ngay trước khi insert
@@ -594,7 +631,7 @@ def orders_checkout(request):
         "tong_tien": tong_tien,
         "phuong_thuc_thanh_toan": pttt,
         "trang_thai": "cho_xu_ly",
-        "ngay_tao": timezone.now(),
+        "ngay_tao": timezone.now(),  # aware
     }
 
     # Thêm legacy nếu bật cờ

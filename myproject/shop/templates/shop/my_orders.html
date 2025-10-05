@@ -1,259 +1,166 @@
 {% extends "shop/base.html" %}
 {% load static %}
+
 {% block title %}Đơn hàng của tôi{% endblock %}
 
 {% block content %}
-<section class="py-4">
-  <div class="container">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h2 class="h4 mb-0"><i class="bi bi-receipt-cutoff me-2"></i>Đơn hàng của tôi</h2>
-      <div class="d-flex gap-2">
-        <div class="btn-group" role="group" aria-label="Lọc đơn">
-          <input type="radio" class="btn-check" name="filterPaid" id="fAll" autocomplete="off" checked>
-          <label class="btn btn-outline-success btn-sm" for="fAll"><i class="bi bi-list-task me-1"></i>Tất cả</label>
+<div class="container py-4">
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+    <h3 class="mb-2 mb-sm-0">
+      Đơn hàng của tôi
+      <span id="paid-badge" class="badge rounded-pill ms-1">{{ items|length }}</span>
+    </h3>
 
-          <input type="radio" class="btn-check" name="filterPaid" id="fPaid" autocomplete="off">
-          <label class="btn btn-outline-success btn-sm" for="fPaid"><i class="bi bi-check2-circle me-1"></i>Đã thanh toán</label>
-        </div>
-        <button id="btnRefresh" class="btn btn-outline-secondary btn-sm">
-          <i class="bi bi-arrow-repeat"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Bảng đơn hàng -->
-    <div class="card border-success-subtle">
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th style="width:160px">Mã đơn</th>
-                <th style="width:180px">Ngày tạo</th>
-                <th>Sản phẩm (tóm tắt)</th>
-                <th class="text-end" style="width:160px">Tổng tiền</th>
-                <th class="text-center" style="width:150px">Thanh toán</th>
-                <th class="text-center" style="width:140px">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody id="ordersBody">
-              <!-- Skeleton khi tải -->
-              <tr class="loading-row">
-                <td colspan="6" class="p-4">
-                  <div class="placeholder-glow">
-                    <span class="placeholder col-12 mb-2" style="height:18px;"></span>
-                    <span class="placeholder col-10 mb-2" style="height:18px;"></span>
-                    <span class="placeholder col-8 mb-2" style="height:18px;"></span>
-                  </div>
-                </td>
-              </tr>
-              <tr class="loading-row">
-                <td colspan="6" class="p-4">
-                  <div class="placeholder-glow">
-                    <span class="placeholder col-12 mb-2" style="height:18px;"></span>
-                    <span class="placeholder col-10 mb-2" style="height:18px;"></span>
-                    <span class="placeholder col-8 mb-2" style="height:18px;"></span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Empty state -->
-        <div id="ordersEmpty" class="text-center text-muted py-5 d-none">
-          <i class="bi bi-clipboard-x fs-1 d-block mb-2" style="color:#2e7d32"></i>
-          Chưa có đơn hàng nào.
-          <div class="mt-2">
-            <a href="{% url 'shop:sanpham_list' %}" class="btn btn-outline-success btn-sm">
-              <i class="bi bi-bag-plus"></i> Mua sắm ngay
-            </a>
-          </div>
-        </div>
-
-        <!-- Lỗi -->
-        <div id="ordersError" class="alert alert-danger m-3 d-none">
-          <i class="bi bi-exclamation-triangle me-1"></i> Không thể tải danh sách đơn hàng.
-        </div>
-      </div>
-
-      <!-- Pagination -->
-      <div class="card-footer d-flex align-items-center justify-content-between">
-        <div class="small text-muted">
-          <span id="pageInfo">Trang 1</span>
-        </div>
-        <div class="btn-group">
-          <button id="btnPrev" class="btn btn-outline-secondary btn-sm" disabled><i class="bi bi-chevron-left"></i></button>
-          <button id="btnNext" class="btn btn-outline-secondary btn-sm" disabled><i class="bi bi-chevron-right"></i></button>
-        </div>
-      </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{% url 'shop:home' %}" class="btn btn-sm btn-outline-secondary">
+        ← Tiếp tục mua sắm
+      </a>
     </div>
   </div>
-</section>
-{% endblock %}
 
-{% block extra_js %}
+  {% if not items %}
+    <div class="alert alert-info shadow-sm rounded-3">
+      Bạn chưa có đơn nào.
+      <a href="{% url 'shop:home' %}" class="alert-link">Mua ngay</a> nhé!
+    </div>
+  {% else %}
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Mã đơn</th>
+              <th>Sản phẩm</th>
+              <th class="text-end">Tổng tiền</th>
+              <th>Thanh toán</th>
+              <th>Trạng thái / Ngày tạo</th>
+              <th style="width:150px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in items %}
+              {% with has_multi=o.items|default:None %}
+              <tr>
+                <td><code class="text-muted">{{ o.id|slice:":8" }}</code></td>
+
+                <td>
+                  {% if has_multi %}
+                    {% firstof o.items.0.san_pham_ten "(Chưa rõ tên)" as first_name %}
+                    <div class="fw-semibold">{{ first_name }}</div>
+                    <div class="small text-muted">
+                      Số lượng: {{ o.items.0.so_luong|default:1 }}
+                      {% if o.items|length > 1 %} • +{{ o.items|length|add:"-1" }} sản phẩm khác{% endif %}
+                    </div>
+
+                    {% if o.items|length > 1 %}
+                      <details class="mt-1">
+                        <summary class="small text-primary">Xem chi tiết</summary>
+                        <ul class="small mb-0 mt-1">
+                          {% for it in o.items %}
+                            <li>
+                              {% firstof it.san_pham_ten "(Chưa rõ tên)" %} — SL: {{ it.so_luong }} —
+                              <span class="money" data-v="{{ it.tong_tien|default:0 }}">{{ it.tong_tien|default:0 }}</span> đ
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </details>
+                    {% endif %}
+                  {% else %}
+                    <div class="fw-semibold">{{ o.san_pham_ten|default:"(Không rõ sản phẩm)" }}</div>
+                    <div class="small text-muted">Số lượng: {{ o.so_luong|default:1 }}</div>
+                  {% endif %}
+                </td>
+
+                <td class="text-end fw-semibold">
+                  <span class="money" data-v="{{ o.tong_tien|default:0 }}">{{ o.tong_tien|default:0 }}</span> đ
+                </td>
+
+                <td><span class="badge rounded-pill bg-light text-dark border">{{ o.phuong_thuc_thanh_toan|upper }}</span></td>
+
+                <td>
+                  <div>
+                    <span class="badge rounded-pill status-badge" data-status="{{ o.trang_thai|default:'cho_xu_ly' }}">
+                      {{ o.trang_thai|default:"cho_xu_ly" }}
+                    </span>
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <span class="time" data-iso="{{ o.ngay_tao }}">{{ o.ngay_tao }}</span>
+                  </div>
+                </td>
+
+                <td class="text-end">
+                  <a href="{% url 'shop:order_detail' o.id %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+
+                </td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  h3 { color: #0f766e; }
+  .badge#paid-badge { background: #e8f7f2; color: #0f766e; border: 1px solid #bfe9de; }
+  .card { border-radius: 1rem !important; }
+  .table thead th { white-space: nowrap; }
+  .status-badge { text-transform: none; }
+  .st-cho_xu_ly   { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+  .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+  .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
+  .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
+  .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  details > summary { cursor: pointer; }
+</style>
+
 <script>
-(() => {
-  // ===== Helpers =====
-  const money = v => {
-    try { v = Number(v||0); } catch(e) { v = 0; }
-    return v.toLocaleString('vi-VN') + ' đ';
-  };
-  const fmtDate = iso => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleString('vi-VN');
-  };
-  const payBadge = pay => {
-    if (String(pay||'cod').toLowerCase() === 'cod') return '<span class="badge text-bg-secondary">COD</span>';
-    if (String(pay).toLowerCase() === 'momo') return '<span class="badge text-bg-pink">MoMo</span>';
-    if (String(pay).toLowerCase().includes('bank')) return '<span class="badge text-bg-primary">Chuyển khoản</span>';
-    return '<span class="badge text-bg-info">' + (pay||'—') + '</span>';
-  };
-  const statusBadge = st => {
-    switch (st) {
-      case 'hoan_thanh': return '<span class="badge text-bg-success">Hoàn thành</span>';
-      case 'dang_giao':  return '<span class="badge text-bg-info">Đang giao</span>';
-      case 'da_huy':     return '<span class="badge text-bg-danger">Đã hủy</span>';
-      default:           return '<span class="badge text-bg-secondary">Chờ xử lý</span>';
-    }
-  };
-
-  // ===== Elements =====
-  const tbody   = document.getElementById('ordersBody');
-  const emptyEl = document.getElementById('ordersEmpty');
-  const errEl   = document.getElementById('ordersError');
-  const pageInfo= document.getElementById('pageInfo');
-  const btnPrev = document.getElementById('btnPrev');
-  const btnNext = document.getElementById('btnNext');
-  const btnRefresh = document.getElementById('btnRefresh');
-
-  const fAll  = document.getElementById('fAll');
-  const fPaid = document.getElementById('fPaid');
-
-  // ===== State =====
-  let page = 1;
-  const pageSize = 10;
-  let total = 0;
-  let paidOnly = false;
-
-  // Quy tắc “đã thanh toán” như views: hoan_thanh OR (pttt != 'cod' AND trang_thai != 'da_huy')
-  function isPaid(order){
-    if (order.trang_thai === 'hoan_thanh') return true;
-    const p = String(order.phuong_thuc_thanh_toan||'cod').toLowerCase();
-    return (p !== 'cod' && order.trang_thai !== 'da_huy');
-  }
-
-  function showLoading(){
-    errEl.classList.add('d-none');
-    emptyEl.classList.add('d-none');
-    tbody.innerHTML = `
-      <tr class="loading-row">
-        <td colspan="6" class="p-4">
-          <div class="placeholder-glow">
-            <span class="placeholder col-12 mb-2" style="height:18px;"></span>
-            <span class="placeholder col-10 mb-2" style="height:18px;"></span>
-            <span class="placeholder col-8 mb-2" style="height:18px;"></span>
-          </div>
-        </td>
-      </tr>
-      <tr class="loading-row">
-        <td colspan="6" class="p-4">
-          <div class="placeholder-glow">
-            <span class="placeholder col-12 mb-2" style="height:18px;"></span>
-            <span class="placeholder col-10 mb-2" style="height:18px;"></span>
-            <span class="placeholder col-8 mb-2" style="height:18px;"></span>
-          </div>
-        </td>
-      </tr>`;
-  }
-
-  function renderRows(items){
-    if (!items.length){
-      tbody.innerHTML = '';
-      emptyEl.classList.remove('d-none');
-      return;
-    }
-    emptyEl.classList.add('d-none');
-
-    tbody.innerHTML = items.map(o => {
-      const firstItem = (o.items && o.items[0]) || null;
-      const title = firstItem?.san_pham_ten || '—';
-      const more = (o.items?.length || 0) > 1 ? ` <span class="text-muted small"> +${o.items.length - 1} mục khác</span>` : '';
-      return `
-        <tr>
-          <td>
-            <div class="fw-semibold text-truncate" title="${o.id}">${o.id}</div>
-          </td>
-          <td><div class="text-muted">${fmtDate(o.ngay_tao)}</div></td>
-          <td>
-            <div class="text-truncate" title="${title}">${title}${more}</div>
-          </td>
-          <td class="text-end fw-semibold">${money(o.tong_tien)}</td>
-          <td class="text-center">${payBadge(o.phuong_thuc_thanh_toan)}</td>
-          <td class="text-center">${statusBadge(o.trang_thai)}</td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  function renderPagination(totalItems){
-    total = Number(totalItems||0);
-    const totalPages = Math.max(Math.ceil(total / pageSize), 1);
-    page = Math.min(Math.max(page, 1), totalPages);
-    pageInfo.textContent = `Trang ${page} / ${totalPages}`;
-    btnPrev.disabled = page <= 1;
-    btnNext.disabled = page >= totalPages;
-  }
-
-  async function loadOrders(){
-    showLoading();
-
-    // Gọi API gốc: /api/orders/ (đã giới hạn theo user trong backend)
-    // Front-end lọc paidOnly nếu bật.
-    const url = new URL('/api/orders/', window.location.origin);
-    url.searchParams.set('page', page);
-    url.searchParams.set('page_size', pageSize);
-    url.searchParams.set('sort', 'newest');
-
+  // ---- Helpers ----
+  function vnd(n){try{return Number(n).toLocaleString('vi-VN')}catch{return n}}
+  function fmtTime(iso){
+    if(!iso) return '—';
     try{
-      const res = await fetch(url, {credentials: 'same-origin'});
-      if (!res.ok) throw new Error('bad status ' + res.status);
-      const data = await res.json();
-
-      let items = Array.isArray(data.items) ? data.items : [];
-      if (paidOnly) items = items.filter(isPaid);
-
-      // Nếu bật paidOnly, tổng để phân trang có thể khác — giữ UX đơn giản:
-      // - Phân trang theo dữ liệu gốc của API
-      // - Nếu muốn phân trang chuẩn theo paidOnly, cần API riêng. (Có thể đổi sang /api/my-orders/?paid=1)
-      renderRows(items);
-      renderPagination(data.total);
-
-      // Cập nhật badge ở navbar (nếu có hàm)
-      if (window.refreshOrdersCount) window.refreshOrdersCount();
-    }catch(e){
-      tbody.innerHTML = '';
-      emptyEl.classList.add('d-none');
-      errEl.classList.remove('d-none');
-    }
+      const d=new Date(iso);
+      const dd=d.toLocaleDateString('vi-VN');
+      const hh=d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+      return `${dd} ${hh}`;
+    }catch{return iso}
+  }
+  function mapStatusText(st){
+    const m={'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','da_huy':'Đã hủy'};
+    return m[st]||st;
   }
 
-  // ===== events =====
-  btnPrev.addEventListener('click', () => { if (page>1){ page--; loadOrders(); } });
-  btnNext.addEventListener('click', () => { page++; loadOrders(); });
-  btnRefresh?.addEventListener('click', () => loadOrders());
-
-  document.getElementById('fAll').addEventListener('change', (e) => {
-    if (e.target.checked){ paidOnly = false; page = 1; loadOrders(); }
-  });
-  document.getElementById('fPaid').addEventListener('change', (e) => {
-    if (e.target.checked){ paidOnly = true; page = 1; loadOrders(); }
+  // ---- Định dạng tiền & thời gian ----
+  document.querySelectorAll('.money').forEach(el=>{el.textContent=vnd(el.dataset.v||el.textContent)});
+  document.querySelectorAll('.time').forEach(el=>{el.textContent=fmtTime(el.dataset.iso||el.textContent)});
+  document.querySelectorAll('.status-badge').forEach(el=>{
+    const st=(el.dataset.status||'').trim();
+    el.textContent=mapStatusText(st);
+    el.classList.add('st-'+st);
   });
 
-  // ===== init =====
-  loadOrders();
-})();
+  // ---- Cập nhật badge đếm (tất cả đơn, không lọc paid) ----
+  (async function(){
+    try{
+      const url=new URL('/api/my-orders/count/', window.location.origin);
+      url.searchParams.set('paid', '0'); // luôn đếm tất cả
+      const r=await fetch(url,{credentials:'same-origin'});
+      if(!r.ok) return;
+      const {count}=await r.json();
+      const bd=document.getElementById('paid-badge');
+      if(bd){
+        if(count>0){
+          bd.textContent=count;
+          bd.style.display='inline-block';
+        }else{
+          bd.style.display='none';
+        }
+      }
+    }catch{}
+  })();
 </script>
 {% endblock %}

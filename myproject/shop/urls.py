@@ -73,6 +73,7 @@ path("api/orders/<str:id>/", dhv.order_detail, name="api_order_detail"),      # 
     
     # Trang + API Đơn hàng của chính user (customer)
     path("don-hang-cua-toi/", dsite.my_orders_page, name="my_orders_page"),
+    path("don-hang/<str:id>/", dsite.my_order_detail, name="order_detail"), 
     path("api/my-orders/", dsite.api_my_orders, name="api_my_orders"),
     path("api/my-orders/count/", dsite.api_my_orders_count, name="api_my_orders_count"),
     
