@@ -46,7 +46,7 @@
                 </select>
               </div>
 
-              <!-- Hướng dẫn chuyển khoản (ẩn/hiện theo select) -->
+              <!-- Hướng dẫn chuyển khoản -->
               <div class="col-12" id="bankTransferWrap" style="display:none;">
                 <div class="alert alert-success-subtle border border-success-subtle bank-hint">
                   <div class="d-flex align-items-center mb-2">
@@ -127,7 +127,7 @@
   </div>
 </section>
 
-<!-- Toast đơn giản -->
+<!-- Toast -->
 <div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
   <div class="d-flex">
     <div class="toast-body"></div>
@@ -173,7 +173,7 @@
 
   // Tự ghép SĐT vào nội dung CK khi user nhập
   form.querySelector('[name="sdt"]').addEventListener('input', (e) => {
-    const phone = (e.target.value || '').replace(/\\s+/g,'');
+    const phone = (e.target.value || '').replace(/\s+/g,'');
     const base  = 'Thanh toan don hang - SDT: ';
     memoInput.value = base + phone;
   });
@@ -208,7 +208,6 @@
       const imgs = sp.hinh_anh || sp.hinh_anh_urls || [];
       let img = '';
       if (Array.isArray(imgs) && imgs.length && imgs[0]) {
-        // Nếu API trả tên file, ghép MEDIA_URL; nếu là URL tuyệt đối thì giữ nguyên
         const first = String(imgs[0]);
         img = first.startsWith('http') ? first : (MEDIA_URL + first);
       } else {

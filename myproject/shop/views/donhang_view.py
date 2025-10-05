@@ -16,11 +16,8 @@ from ..database import don_hang, san_pham, tai_khoan
 # =================== CẤU HÌNH ===================
 PAGE_SIZE_DEFAULT = 10
 PAGE_SIZE_MAX = 100
-# Trạng thái đơn hàng hợp lệ
 ALLOWED_STATUS = {"cho_xu_ly", "da_xac_nhan", "dang_giao", "hoan_thanh", "da_huy"}
-# Phương thức thanh toán hợp lệ
 ALLOWED_PAY = {"cod", "chuyen_khoan"}
-# Luôn ghi kèm legacy fields để tránh lỗi validator cũ
 ALWAYS_ADD_LEGACY_FIELDS = True
 
 
@@ -38,7 +35,6 @@ def _is_admin(request):
 
 
 def require_login_api(view_func):
-    """Trả 401 nếu chưa đăng nhập. Gắn request.user_oid & request.is_admin."""
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
         user = _cur_user_oid(request)
@@ -73,11 +69,6 @@ def _json_required(request):
 
 
 def _ensure_aware_utc(dt: datetime) -> datetime:
-    """
-    Nhận datetime có thể naive (từ Mongo).
-    - Nếu naive: coi là UTC và make_aware UTC.
-    - Nếu aware: giữ nguyên.
-    """
     if dt is None:
         return timezone.now().astimezone(dt_timezone.utc)
     if timezone.is_naive(dt):
@@ -86,31 +77,19 @@ def _ensure_aware_utc(dt: datetime) -> datetime:
 
 
 def _to_local_iso(dt: datetime) -> str:
-    """
-    Convert datetime (có thể naive) sang local timezone (settings.TIME_ZONE)
-    rồi trả về ISO8601 có offset, ví dụ: 2025-10-05T08:30:00+07:00
-    """
     aware_utc = _ensure_aware_utc(dt)
     dt_local = timezone.localtime(aware_utc)
     return dt_local.isoformat()
 
 
 def _parse_date(s: str, end=False):
-    """
-    Nhận chuỗi YYYY-MM-DD và trả về datetime có timezone (local TZ).
-    - end=False: đầu ngày local (00:00:00 local)
-    - end=True : đầu ngày kế tiếp local (để dùng $lt)
-    """
     try:
         d = datetime.strptime(s.strip(), "%Y-%m-%d")
     except Exception:
         return None
-
-    # make aware ở local TZ trước
-    d_local = timezone.make_aware(d)  # mặc định TIME_ZONE trong settings
+    d_local = timezone.make_aware(d)
     if end:
         d_local = d_local + timedelta(days=1)
-    # Mongo so sánh tốt nhất ở UTC
     return d_local.astimezone(dt_timezone.utc)
 
 
@@ -132,24 +111,124 @@ def _product_label(sp_doc):
     return sp_doc.get("ten") or sp_doc.get("ten_san_pham")
 
 
+# === Người nhận: trích từ payload & gắn alias vào document ===
+def _extract_receiver_from_payload(data: dict) -> dict:
+    nhan = data.get("nguoi_nhan") or {}
+    def _get(k):
+        if isinstance(nhan, dict) and k in nhan:
+            return nhan.get(k)
+        return data.get(k)
+
+    def _pick(*keys):
+        for k in keys:
+            v = _get(k)
+            if v is None:
+                continue
+            if isinstance(v, str):
+                v = v.strip()
+            if v:
+                return v
+        return None
+
+    out = {
+        "ten": _pick("ho_ten", "ho_va_ten", "ten"),
+        "email": _pick("email"),
+        "sdt": _pick("sdt", "so_dien_thoai", "phone"),
+        "dia_chi": _pick("dia_chi", "address"),
+        "ghi_chu": _pick("ghi_chu", "note"),
+    }
+    return {k: v for k, v in out.items() if v}
+
+
+def _apply_receiver_aliases(doc: dict, receiver: dict) -> None:
+    if not receiver:
+        return
+    doc["nguoi_nhan"] = receiver
+    if receiver.get("ten"):
+        doc["ho_ten"] = receiver["ten"]
+        doc["ho_va_ten"] = receiver["ten"]
+        doc["ten_nguoi_nhan"] = receiver["ten"]
+    if receiver.get("email"):
+        doc["email"] = receiver["email"]
+        doc["email_nguoi_nhan"] = receiver["email"]
+    if receiver.get("sdt"):
+        doc["so_dien_thoai"] = receiver["sdt"]
+        doc["sdt"] = receiver["sdt"]
+        doc["phone"] = receiver["sdt"]
+        doc["sdt_nguoi_nhan"] = receiver["sdt"]
+    if receiver.get("dia_chi"):
+        doc["dia_chi"] = receiver["dia_chi"]
+        doc["address"] = receiver["dia_chi"]
+        doc["dia_chi_giao_hang"] = receiver["dia_chi"]
+    if receiver.get("ghi_chu"):
+        doc["ghi_chu"] = receiver["ghi_chu"]
+        doc["note"] = receiver["ghi_chu"]
+
+
+def _merge_receiver_from_doc(doc: dict, acc: dict | None):
+    def _pick(*vals):
+        for v in vals:
+            if v is None:
+                continue
+            if isinstance(v, str):
+                v = v.strip()
+            if v:
+                return v
+        return None
+
+    nhan = doc.get("nguoi_nhan") or doc.get("nguoi_dat") or doc.get("thong_tin_nhan_hang") or {}
+    return {
+        "ten": _pick(
+            nhan.get("ten") if isinstance(nhan, dict) else None,
+            nhan.get("ho_ten") if isinstance(nhan, dict) else None,
+            nhan.get("ho_va_ten") if isinstance(nhan, dict) else None,
+            doc.get("ten_nguoi_nhan"), doc.get("ho_va_ten"), doc.get("ho_ten"), doc.get("ten"),
+            (acc or {}).get("ho_ten"), (acc or {}).get("ten"),
+            (acc or {}).get("ten_dang_nhap"), (acc or {}).get("username"),
+        ),
+        "email": _pick(
+            nhan.get("email") if isinstance(nhan, dict) else None,
+            doc.get("email_nguoi_nhan"), doc.get("email"),
+            (acc or {}).get("email"),
+        ),
+        "sdt": _pick(
+            nhan.get("sdt") if isinstance(nhan, dict) else None,
+            nhan.get("so_dien_thoai") if isinstance(nhan, dict) else None,
+            nhan.get("phone") if isinstance(nhan, dict) else None,
+            doc.get("sdt_nguoi_nhan"), doc.get("so_dien_thoai"), doc.get("sdt"), doc.get("phone"),
+            (acc or {}).get("so_dien_thoai"), (acc or {}).get("sdt"), (acc or {}).get("phone"),
+        ),
+        "dia_chi": _pick(
+            nhan.get("dia_chi") if isinstance(nhan, dict) else None,
+            nhan.get("address") if isinstance(nhan, dict) else None,
+            doc.get("dia_chi_giao_hang"), doc.get("dia_chi"), doc.get("address"),
+            (acc or {}).get("dia_chi"), (acc or {}).get("address"),
+        ),
+        "ghi_chu": _pick(
+            nhan.get("ghi_chu") if isinstance(nhan, dict) else None,
+            doc.get("ghi_chu"), doc.get("note"),
+        ),
+    }
+
+
 def _serialize_order(doc, acc=None, sp_map=None):
     items_out = []
     for it in doc.get("items", []):
         sp_id = it.get("san_pham_id")
         sp_doc = sp_map.get(sp_id) if sp_map else None
-        items_out.append(
-            {
-                "san_pham_id": str(sp_id) if sp_id else None,
-                "san_pham_ten": _product_label(sp_doc) if sp_doc else None,
-                "so_luong": int(it.get("so_luong", 0)),
-                "don_gia": int(it.get("don_gia", 0)),
-                "tong_tien": int(it.get("tong_tien", 0)),
-            }
-        )
+        name = _product_label(sp_doc) if sp_doc else (it.get("san_pham_ten") if isinstance(it, dict) else None)
+        items_out.append({
+            "san_pham_id": str(sp_id) if sp_id else None,
+            "san_pham_ten": name,
+            "so_luong": int(it.get("so_luong", 0)),
+            "don_gia": int(it.get("don_gia", 0)),
+            "tong_tien": int(it.get("tong_tien", 0)),
+        })
 
-    # Chuẩn hoá ngay_tao -> ISO local có offset
     raw_dt = doc.get("ngay_tao") or timezone.now()
     ngay_tao_iso = _to_local_iso(raw_dt)
+
+    merged_receiver = {k: v for k, v in (_merge_receiver_from_doc(doc, acc) or {}).items() if v}
 
     return {
         "id": str(doc["_id"]),
@@ -160,10 +239,10 @@ def _serialize_order(doc, acc=None, sp_map=None):
         "phuong_thuc_thanh_toan": doc.get("phuong_thuc_thanh_toan") or "cod",
         "trang_thai": doc.get("trang_thai") or "cho_xu_ly",
         "ngay_tao": ngay_tao_iso,
+        "nguoi_dat": merged_receiver,   # 👈 thêm cho site/admin cần hiển thị
     }
 
 
-# Helper: thêm legacy fields
 def _add_legacy_fields(d):
     if d.get("items"):
         first = d["items"][0]
@@ -271,15 +350,15 @@ def orders_list(request):
         }},
     ]
 
+    # 👇 Sắp xếp: mặc định theo ngay_tao ↓, _id ↓
     sort_map = {
-        "newest": [("_id", -1)],
-        "oldest": [("_id", 1)],
-        "total_desc": [("tong_tien", -1), ("_id", -1)],
-        "total_asc": [("tong_tien", 1), ("_id", -1)],
+        "newest": [("ngay_tao", -1), ("_id", -1)],
+        "oldest": [("ngay_tao", 1), ("_id", 1)],
+        "total_desc": [("tong_tien", -1), ("ngay_tao", -1), ("_id", -1)],
+        "total_asc": [("tong_tien", 1), ("ngay_tao", -1), ("_id", -1)],
     }
     sort_spec = sort_map.get(sort, sort_map["newest"])
-    for fld, direction in reversed(sort_spec):
-        pipeline.append({"$sort": {fld: direction}})
+    pipeline.append({"$sort": {k: v for k, v in sort_spec}})
 
     count_pipeline = list(pipeline) + [{"$count": "total"}]
     cnt = list(don_hang.aggregate(count_pipeline))
@@ -292,7 +371,6 @@ def orders_list(request):
 
     items = []
     for gr in rows:
-        # Chú ý: ngay_tao từ pipeline có thể là naive UTC → serialize xử lý trong _serialize_order
         doc = {
             "_id": gr["_id"],
             "tai_khoan_id": gr.get("tai_khoan_id"),
@@ -312,19 +390,6 @@ def orders_list(request):
 @require_login_api
 @require_http_methods(["POST"])
 def orders_create(request):
-    """
-    POST /api/orders/create/
-    Body (JSON):
-    {
-      "phuong_thuc_thanh_toan": "cod",
-      "trang_thai": "cho_xu_ly",
-      "items": [
-        { "san_pham_id": "...", "so_luong": 2, "don_gia": 45000 },
-        { "san_pham_id": "...", "so_luong": 1 }   # don_gia bỏ trống -> lấy theo sp.gia
-      ]
-    }
-    * tai_khoan_id = user đăng nhập (session)
-    """
     err = _json_required(request)
     if err:
         return err
@@ -379,17 +444,19 @@ def orders_create(request):
         "tong_tien": tong_tien,
         "phuong_thuc_thanh_toan": pttt,
         "trang_thai": trang_thai,
-        "ngay_tao": timezone.now(),  # aware
+        "ngay_tao": timezone.now(),
     }
 
-    # Nếu bật cờ -> thêm legacy ngay trước khi insert
+    # 👇 Gắn người nhận (nếu có trong payload)
+    receiver = _extract_receiver_from_payload(data)
+    _apply_receiver_aliases(doc, receiver)
+
     if ALWAYS_ADD_LEGACY_FIELDS:
         _add_legacy_fields(doc)
 
     try:
         res = don_hang.insert_one(doc)
     except WriteError:
-        # Retry vô điều kiện với legacy để tương thích validator cũ
         try:
             _add_legacy_fields(doc)
             res = don_hang.insert_one(doc)
@@ -411,18 +478,10 @@ def orders_create(request):
 @csrf_exempt
 @require_login_api
 def order_detail(request, id: str):
-    """
-    GET    /api/orders/<id>/
-    PUT    /api/orders/<id>/                 (JSON)
-    POST   /api/orders/<id>/?_method=PUT     (form update basic fields)
-    DELETE /api/orders/<id>/
-    * User thường chỉ thao tác đơn của mình, admin thao tác tất cả.
-    """
     oid = _safe_oid(id)
     if not oid:
         return JsonResponse({"error": "Invalid id"}, status=400)
 
-    # ----- GET -----
     if request.method == "GET":
         doc = don_hang.find_one({"_id": oid})
         if not doc:
@@ -435,7 +494,6 @@ def order_detail(request, id: str):
         acc = tai_khoan.find_one({"_id": doc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
         return JsonResponse(_serialize_order(doc, acc=acc, sp_map=sp_map))
 
-    # ----- POST (form override PUT) -----
     if request.method == "POST" and (request.POST.get("_method") or "").upper() == "PUT":
         doc = don_hang.find_one({"_id": oid})
         if not doc:
@@ -465,7 +523,6 @@ def order_detail(request, id: str):
         acc = tai_khoan.find_one({"_id": newdoc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
         return JsonResponse(_serialize_order(newdoc, acc=acc, sp_map=sp_map))
 
-    # ----- PUT (JSON) -----
     if request.method == "PUT":
         err = _json_required(request)
         if err:
@@ -493,7 +550,6 @@ def order_detail(request, id: str):
                 return JsonResponse({"error": "trang_thai không hợp lệ"}, status=400)
             update["trang_thai"] = st or "cho_xu_ly"
 
-        # Admin mới được đổi chủ đơn
         if request.is_admin and "tai_khoan_id" in body:
             val = body.get("tai_khoan_id")
             tk_new = _safe_oid(val) if val else None
@@ -501,7 +557,6 @@ def order_detail(request, id: str):
                 return JsonResponse({"error": "tai_khoan_id không hợp lệ"}, status=400)
             update["tai_khoan_id"] = tk_new
 
-        # Thay toàn bộ items (nếu gửi)
         items_in = body.get("items", None)
         tong_tien = None
         sp_ids = []
@@ -557,7 +612,6 @@ def order_detail(request, id: str):
         acc = tai_khoan.find_one({"_id": newdoc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
         return JsonResponse(_serialize_order(newdoc, acc=acc, sp_map=sp_map))
 
-    # ----- DELETE -----
     if request.method == "DELETE":
         doc = don_hang.find_one({"_id": oid})
         if not doc:
@@ -580,8 +634,11 @@ def order_detail(request, id: str):
 def orders_checkout(request):
     """
     POST /api/orders/checkout/
-    Body: { "use_cart": true, "phuong_thuc_thanh_toan": "cod" }
-    Lấy items trong giỏ của user -> tạo đơn hàng -> xoá giỏ.
+    Body: {
+      "use_cart": true,
+      "phuong_thuc_thanh_toan": "cod",
+      "ho_ten": "...", "sdt": "...", "dia_chi": "...", "ghi_chu": "..."
+    }
     """
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -631,17 +688,19 @@ def orders_checkout(request):
         "tong_tien": tong_tien,
         "phuong_thuc_thanh_toan": pttt,
         "trang_thai": "cho_xu_ly",
-        "ngay_tao": timezone.now(),  # aware
+        "ngay_tao": timezone.now(),
     }
 
-    # Thêm legacy nếu bật cờ
+    # 👇 GẮN THÔNG TIN NGƯỜI NHẬN TỪ FORM CHECKOUT
+    receiver = _extract_receiver_from_payload(data)
+    _apply_receiver_aliases(doc, receiver)
+
     if ALWAYS_ADD_LEGACY_FIELDS:
         _add_legacy_fields(doc)
 
     try:
         res = don_hang.insert_one(doc)
     except WriteError:
-        # Retry vô điều kiện kèm legacy
         try:
             _add_legacy_fields(doc)
             res = don_hang.insert_one(doc)
@@ -653,7 +712,6 @@ def orders_checkout(request):
         return JsonResponse({"error": "unknown", "message": str(e)}, status=500)
 
     created = don_hang.find_one({"_id": res.inserted_id})
-    # Xoá giỏ hàng sau khi tạo đơn thành công
     gio_hang.delete_many({"tai_khoan_id": user_oid})
 
     acc = tai_khoan.find_one({"_id": user_oid}, {"ho_ten": 1, "ten": 1, "email": 1})

@@ -35,7 +35,7 @@
               <th class="text-end">Tổng tiền</th>
               <th>Thanh toán</th>
               <th>Trạng thái / Ngày tạo</th>
-              <th style="width:150px"></th>
+              <th style="width:180px" class="text-end">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -59,7 +59,7 @@
                         <ul class="small mb-0 mt-1">
                           {% for it in o.items %}
                             <li>
-                              {% firstof it.san_pham_ten "(Chưa rõ tên)" %} — SL: {{ it.so_luong }} —
+                              {% firstof it.san_pham_ten "(Chưa rõ tên)" %} — SL: {{ it.so_luong }} — 
                               <span class="money" data-v="{{ it.tong_tien|default:0 }}">{{ it.tong_tien|default:0 }}</span> đ
                             </li>
                           {% endfor %}
@@ -90,8 +90,16 @@
                 </td>
 
                 <td class="text-end">
-                  <a href="{% url 'shop:order_detail' o.id %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-
+                  <div class="d-flex gap-2 justify-content-end">
+                    <a href="{% url 'shop:order_detail' o.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i> Chi tiết
+                    </a>
+                    {% if o.trang_thai == 'cho_xu_ly' or o.trang_thai == 'da_xac_nhan' %}
+                      <button data-id="{{ o.id }}" class="btn btn-sm btn-outline-danger btn-cancel-order">
+                        <i class="bi bi-x-circle"></i> Hủy
+                      </button>
+                    {% endif %}
+                  </div>
                 </td>
               </tr>
               {% endwith %}
@@ -113,7 +121,23 @@
   .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
   .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
   .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
-  .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  .st-huy         { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+
+  .btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+    transition: all 0.2s ease-in-out;
+  }
+  .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(220,53,69,0.3);
+  }
+  .btn-outline-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(13,110,253,0.3);
+  }
   details > summary { cursor: pointer; }
 </style>
 
@@ -130,7 +154,7 @@
     }catch{return iso}
   }
   function mapStatusText(st){
-    const m={'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','da_huy':'Đã hủy'};
+    const m={'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','huy':'Đã hủy'};
     return m[st]||st;
   }
 
@@ -143,11 +167,31 @@
     el.classList.add('st-'+st);
   });
 
+  // ---- Hủy đơn trực tiếp ----
+  document.querySelectorAll('.btn-cancel-order').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm('Bạn có chắc muốn hủy đơn này?')) return;
+      const id = btn.dataset.id;
+      try{
+        const r = await fetch(`/api/my-orders/${id}/cancel/`, { method: 'POST', credentials: 'same-origin' });
+        if(r.ok){
+          alert('Đã hủy đơn thành công!');
+          location.reload();
+        }else{
+          const d = await r.json().catch(()=>({}));
+          alert('Hủy thất bại' + (d.error ? `: ${d.error}` : ''));
+        }
+      }catch(e){
+        alert('Lỗi mạng, vui lòng thử lại!');
+      }
+    });
+  });
+
   // ---- Cập nhật badge đếm (tất cả đơn, không lọc paid) ----
   (async function(){
     try{
       const url=new URL('/api/my-orders/count/', window.location.origin);
-      url.searchParams.set('paid', '0'); // luôn đếm tất cả
+      url.searchParams.set('paid', '0');
       const r=await fetch(url,{credentials:'same-origin'});
       if(!r.ok) return;
       const {count}=await r.json();

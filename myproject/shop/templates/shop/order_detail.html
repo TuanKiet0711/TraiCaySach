@@ -10,7 +10,7 @@
 
     <div class="d-flex gap-2">
       <button id="btn-print" class="btn btn-sm btn-outline-primary">In</button>
-      {% if order.trang_thai == 'cho_xu_ly' %}
+      {% if order.trang_thai == 'cho_xu_ly' or order.trang_thai == 'da_xac_nhan' %}
       <button id="btn-cancel" class="btn btn-sm btn-danger">Hủy đơn</button>
       {% endif %}
     </div>
@@ -49,14 +49,15 @@
       </div>
     </div>
 
-    <!-- 👇 Thông tin đặt hàng -->
     {% if order.nguoi_dat %}
     <div class="p-3 rounded-3 border mb-3">
       <div class="small text-muted">Thông tin đặt hàng</div>
       <div class="row mt-1">
         <div class="col-md-6">
           <div><strong>Họ tên:</strong> {{ order.nguoi_dat.ten|default:"—" }}</div>
-          <div><strong>Email:</strong> {{ order.nguoi_dat.email|default:"—" }}</div>
+          {% if order.nguoi_dat.ghi_chu %}
+          <div class="mt-2"><strong>Ghi chú:</strong> {{ order.nguoi_dat.ghi_chu }}</div>
+          {% endif %}
         </div>
         <div class="col-md-6">
           <div><strong>SĐT:</strong> {{ order.nguoi_dat.sdt|default:"—" }}</div>
@@ -115,16 +116,24 @@
   function vnd(n){ try { return Number(n).toLocaleString('vi-VN'); } catch { return n; } }
   function fmtTime(iso){
     if(!iso) return '—';
-    try { const d=new Date(iso);
-      const dd=d.toLocaleDateString('vi-VN');
-      const hh=d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+    try {
+      const d = new Date(iso);
+      const dd = d.toLocaleDateString('vi-VN');
+      const hh = d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
       return `${dd} ${hh}`;
     } catch { return iso; }
   }
   function mapStatusText(st){
-    const m={'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','da_huy':'Đã hủy'};
-    return m[st]||st;
-  }
+  const m={
+    'cho_xu_ly':'Chờ xử lý',
+    'da_xac_nhan':'Đã xác nhận',
+    'dang_giao':'Đang giao',
+    'hoan_thanh':'Hoàn thành',
+    'huy':'Đã hủy'  // 👈 thêm key 'huy'
+  };
+  return m[st]||st;
+}
+
 
   // Format
   document.querySelectorAll('.money').forEach(el=>el.textContent=vnd(el.dataset.v||el.textContent));
@@ -138,21 +147,24 @@
   // In
   document.getElementById('btn-print')?.addEventListener('click', ()=> window.print());
 
-  // Hủy đơn
+  // ⚙️ Hủy đơn
   const cancelBtn = document.getElementById('btn-cancel');
   if (cancelBtn) {
+    const CANCEL_URL = `/api/my-orders/{{ order.id }}/cancel/`;
     cancelBtn.addEventListener('click', async () => {
       if (!confirm('Bạn chắc muốn hủy đơn này?')) return;
       try {
-        const url = `{% url 'shop:api_order_detail' order.id %}?_method=PUT`;
-        const form = new FormData();
-        form.set('trang_thai', 'da_huy');
-        const r = await fetch(url, { method: 'POST', body: form, credentials: 'same-origin' });
-        if (!r.ok) {
-          const data = await r.json().catch(()=>({}));
-          alert('Hủy thất bại' + (data?.error?`: ${data.error}`:''));
+        const r = await fetch(CANCEL_URL, {
+          method: 'DELETE',   // ✅ đổi từ POST -> DELETE
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await r.json().catch(()=>({}));
+        if (!r.ok || !data.ok) {
+          alert('Hủy thất bại' + (data.error ? `: ${data.error}` : ''));
           return;
         }
+        alert('Đã hủy đơn thành công!');
         location.reload();
       } catch (e) {
         alert('Có lỗi mạng, vui lòng thử lại!');
@@ -160,4 +172,5 @@
     });
   }
 </script>
+
 {% endblock %}
