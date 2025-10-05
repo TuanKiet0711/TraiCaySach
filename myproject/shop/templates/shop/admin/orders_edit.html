@@ -1,68 +1,39 @@
-{% extends 'shop/admin/base_admin.html' %}
+{% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
+{% load static %}
 {% block title %}Sửa đơn hàng{% endblock %}
 {% block page_title %}Sửa đơn hàng{% endblock %}
 
 {% block content %}
-<div class="card shadow-sm">
-  <div class="card-body">
-    <form id="editOrderForm" autocomplete="off">
-      <!-- Tài khoản -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Tài khoản</label>
-        <input type="hidden" id="tai_khoan_id">
-        <div class="dropdown w-100">
-          <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
-                  type="button" id="btnAccount" data-bs-toggle="dropdown" aria-expanded="false">
-            <span id="labelAccount">—</span><span class="ms-2">▾</span>
-          </button>
-          <ul id="accountsMenu" class="dropdown-menu w-100 p-1" style="max-height:260px;overflow:auto;"></ul>
-        </div>
-        <div class="form-text text-danger d-none" id="accError">Vui lòng chọn tài khoản</div>
-      </div>
+<div class="container py-4">
 
-      <!-- Sản phẩm -->
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Sản phẩm</label>
-        <input type="hidden" id="san_pham_id">
-        <div class="dropdown w-100">
-          <button class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
-                  type="button" id="btnProduct" data-bs-toggle="dropdown" aria-expanded="false">
-            <span id="labelProduct">—</span><span class="ms-2">▾</span>
-          </button>
-          <ul id="productsMenu" class="dropdown-menu w-100 p-1" style="max-height:260px;overflow:auto;"></ul>
-        </div>
-        <div class="form-text text-danger d-none" id="spError">Vui lòng chọn sản phẩm</div>
-      </div>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="text-success mb-0">Đơn hàng</h4>
+    <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-secondary rounded-pill">← Quay lại</a>
+  </div>
 
+  <div class="card shadow-sm border-0 rounded-4 p-4">
+    <form id="editForm">
       <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label fw-semibold" for="so_luong">Số lượng</label>
-          <input type="number" id="so_luong" class="form-control" min="1" step="1" required>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Mã đơn</label>
+          <input type="text" id="order-id" class="form-control" readonly>
         </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold" for="don_gia">Đơn giá (VNĐ)</label>
-          <input type="text" id="don_gia" class="form-control" inputmode="numeric" pattern="[0-9,]*" required>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Tài khoản</label>
+          <input type="text" id="order-account" class="form-control" readonly>
         </div>
-        <div class="col-md-4">
-          <label class="form-label fw-semibold">Tổng tiền</label>
-          <div class="form-control bg-light" id="tong_tien_preview" style="pointer-events:none">0 đ</div>
-        </div>
-      </div>
 
-      <div class="row g-3 mt-1">
         <div class="col-md-6">
-          <label class="form-label fw-semibold" for="pttt">Phương thức thanh toán</label>
-          <select id="pttt" class="form-select">
-            <option value="cod">COD</option>
-            <option value="bank">Chuyển khoản</option>
-            <option value="momo">Momo</option>
-            <option value="card">Thẻ</option>
-          </select>
+          <label class="form-label small text-muted">Phương thức thanh toán</label>
+          <input type="text" id="order-pay" class="form-control" readonly>
         </div>
+
         <div class="col-md-6">
-          <label class="form-label fw-semibold" for="trang_thai">Trạng thái</label>
-          <select id="trang_thai" class="form-select">
+          <label class="form-label small text-muted">Trạng thái</label>
+          <select id="order-status" class="form-select">
             <option value="cho_xu_ly">Chờ xử lý</option>
+            <option value="da_xac_nhan">Đã xác nhận</option>
             <option value="dang_giao">Đang giao</option>
             <option value="hoan_thanh">Hoàn thành</option>
             <option value="da_huy">Đã hủy</option>
@@ -70,109 +41,118 @@
         </div>
       </div>
 
-      <div class="d-flex gap-2 mt-3">
-        <button class="btn btn-primary" type="submit">Lưu thay đổi</button>
-        <a class="btn btn-secondary" href="{% url 'shop:admin_orders' %}">Hủy</a>
+      <hr class="my-4">
+
+      <h6 class="text-secondary mb-2">Thông tin người đặt</h6>
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label class="form-label small text-muted">Họ tên</label>
+          <input id="nguoi-ten" class="form-control mb-2" readonly>
+          <label class="form-label small text-muted">SĐT</label>
+          <input id="nguoi-sdt" class="form-control" readonly>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small text-muted">Địa chỉ</label>
+          <input id="nguoi-diachi" class="form-control mb-2" readonly>
+          <label class="form-label small text-muted">Ghi chú</label>
+          <textarea id="nguoi-ghichu" class="form-control" rows="2" readonly></textarea>
+        </div>
+      </div>
+
+      <h6 class="text-secondary mb-2">Danh sách sản phẩm</h6>
+      <div class="table-responsive mb-3">
+        <table class="table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width:70px"></th>
+              <th>Tên sản phẩm</th>
+              <th class="text-center" style="width:110px">Số lượng</th>
+              <th class="text-end" style="width:160px">Đơn giá</th>
+              <th class="text-end" style="width:180px">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody id="items-body"></tbody>
+        </table>
+      </div>
+
+      <div class="text-end fw-bold h5 mb-3">
+        Tổng cộng: <span id="order-total">0</span> đ
+      </div>
+
+      <div class="d-flex justify-content-end mt-3">
+        <button type="submit" class="btn btn-success rounded-pill px-4">Lưu thay đổi</button>
       </div>
     </form>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+  .table th, .table td { vertical-align: middle; }
+  img.thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+</style>
+
 <script>
-;(async function(){
-  const orderId = '{{ order_id }}';
-  const $=(id)=>document.getElementById(id);
-  function getCookie(name){let v=null;if(document.cookie)for(let c of document.cookie.split(';')){c=c.trim();if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}}return v}
-  const CSRF=getCookie('csrftoken');
+  const ORDER_ID = "{{ order_id }}";
+  const API_URL = `/api/orders/${ORDER_ID}/`;
 
-  // format tiền
-  const formatComma=(s)=>{const clean=(s||'').replace(/[^\d]/g,''); return clean?clean.replace(/\B(?=(\d{3})+(?!\d))/g,','):''}
-  const parseMoney=(s)=>{const n=parseInt(String(s||'').replace(/[^\d]/g,''),10); return isNaN(n)?0:n}
-  function updateTotal(){
-    const sl=parseInt(($('so_luong').value||'1'),10)||1;
-    const dg=parseMoney($('don_gia').value);
-    $('tong_tien_preview').textContent=(sl*dg).toLocaleString('vi-VN')+' đ';
-  }
+  function vnd(n){ try{return Number(n).toLocaleString('vi-VN')}catch{return n;} }
 
-  // load lists
-  async function loadProducts(){
-    const r=await fetch('/api/products/?page_size=200'); if(!r.ok) return [];
-    const d=await r.json(); return d.items||[];
-  }
-  async function loadAccounts(){
-    const r=await fetch('/api/accounts/?page_size=200'); if(!r.ok) return [];
-    const d=await r.json(); return d.items||d||[];
-  }
-  function accountLabel(a){return a.ten || a.ho_ten || a.username || a.email || a.ten_dang_nhap || '(không tên)'}
-  function productLabel(p){return p.ten || p.ten_san_pham || '(sản phẩm)'}
-  function fillDropdown(menu, list, labelFn){
-    menu.innerHTML=list.map(x=>`<li><a class="dropdown-item" href="#" data-id="${x.id||x._id}">${labelFn(x)}</a></li>`).join('');
-  }
+  async function loadOrder(){
+    try{
+      const res = await fetch(API_URL, {credentials:"include"});
+      if(!res.ok) throw new Error("Không tải được đơn hàng");
+      const o = await res.json();
 
-  // lấy đơn
-  const rOrder=await fetch(`/api/orders/${orderId}/`);
-  if(!rOrder.ok){ alert('Không tìm thấy đơn'); window.location="{% url 'shop:admin_orders' %}"; return; }
-  const cur=await rOrder.json();
+      document.getElementById("order-id").value = o.id.slice(0,8);
+      document.getElementById("order-account").value = o.tai_khoan_ten || "—";
+      document.getElementById("order-pay").value = (o.phuong_thuc_thanh_toan||"COD").toUpperCase();
+      document.getElementById("order-status").value = o.trang_thai || "cho_xu_ly";
+      document.getElementById("order-total").textContent = vnd(o.tong_tien||0);
 
-  // bind lists
-  const proms=[loadProducts(), loadAccounts()];
-  const [products, accounts] = await Promise.all(proms);
-  fillDropdown($('productsMenu'), products, productLabel);
-  fillDropdown($('accountsMenu'), accounts, accountLabel);
-
-  // set current labels + hidden
-  $('san_pham_id').value = cur.san_pham_id || '';
-  $('tai_khoan_id').value = cur.tai_khoan_id || '';
-  $('labelProduct').textContent = cur.san_pham_ten || '-- Chọn sản phẩm --';
-  $('labelAccount').textContent = cur.tai_khoan_ten || '-- Chọn tài khoản --';
-
-  // events chọn
-  $('productsMenu').addEventListener('click', async (e)=>{
-    const item=e.target.closest('.dropdown-item'); if(!item) return; e.preventDefault();
-    $('san_pham_id').value=item.dataset.id||''; $('labelProduct').textContent=item.textContent.trim();
-    if($('san_pham_id').value){
-      const r=await fetch(`/api/products/${$('san_pham_id').value}/`); if(r.ok){const d=await r.json();
-        if(typeof d.gia==='number'){ $('don_gia').value = formatComma(String(d.gia)); updateTotal(); }
+      if(o.nguoi_dat){
+        document.getElementById("nguoi-ten").value = o.nguoi_dat.ten || "";
+        document.getElementById("nguoi-sdt").value = o.nguoi_dat.sdt || "";
+        document.getElementById("nguoi-diachi").value = o.nguoi_dat.dia_chi || "";
+        document.getElementById("nguoi-ghichu").value = o.nguoi_dat.ghi_chu || "";
       }
+
+      const body = document.getElementById("items-body");
+      body.innerHTML = "";
+      (o.items||[]).forEach(it=>{
+        const imgSrc = it.anh || it.image_url || "{% static 'img/no-image.png' %}";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><img src="${imgSrc}" class="thumb" onerror="this.src='https://via.placeholder.com/60?text=%20';"></td>
+          <td>${it.san_pham_ten||"(Không rõ)"}</td>
+          <td class="text-center">${it.so_luong}</td>
+          <td class="text-end">${vnd(it.don_gia)} đ</td>
+          <td class="text-end">${vnd(it.tong_tien)} đ</td>
+        `;
+        body.appendChild(tr);
+      });
+    }catch(err){
+      alert(err.message);
+    }
+  }
+
+  document.getElementById("editForm").addEventListener("submit", async e=>{
+    e.preventDefault();
+    const status = document.getElementById("order-status").value;
+    try{
+      const res = await fetch(API_URL,{
+        method:"PUT",
+        credentials:"include",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({trang_thai: status})
+      });
+      if(!res.ok) throw new Error("Cập nhật thất bại");
+      alert("✅ Cập nhật trạng thái thành công!");
+      window.location.href = "{% url 'shop:admin_orders' %}";
+    }catch(err){
+      alert(err.message);
     }
   });
-  $('accountsMenu').addEventListener('click',(e)=>{
-    const item=e.target.closest('.dropdown-item'); if(!item) return; e.preventDefault();
-    $('tai_khoan_id').value=item.dataset.id||''; $('labelAccount').textContent=item.textContent.trim();
-  });
 
-  // điền số liệu khác
-  $('so_luong').value = cur.so_luong || 1;
-  $('don_gia').value = formatComma(String(cur.don_gia||0));
-  $('pttt').value = cur.phuong_thuc_thanh_toan || 'cod';
-  $('trang_thai').value = cur.trang_thai || 'cho_xu_ly';
-  $('so_luong').addEventListener('input',updateTotal);
-  $('don_gia').addEventListener('input',(e)=>{
-    const f=formatComma(e.target.value); if(f!==e.target.value){const end=f.length; e.target.value=f; e.target.setSelectionRange(end,end)}
-    updateTotal();
-  });
-  $('don_gia').addEventListener('blur',e=>{e.target.value=formatComma(e.target.value); updateTotal();});
-  updateTotal();
-
-  // submit
-  $('editOrderForm').addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const payload={
-      tai_khoan_id: $('tai_khoan_id').value || null,
-      san_pham_id: $('san_pham_id').value || null,
-      so_luong: parseInt($('so_luong').value,10)||1,
-      don_gia: parseMoney($('don_gia').value),
-      phuong_thuc_thanh_toan: $('pttt').value,
-      trang_thai: $('trang_thai').value
-    };
-    const r=await fetch(`/api/orders/${orderId}/`,{
-      method:'PUT', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:JSON.stringify(payload)
-    });
-    if(r.ok){ window.location="{% url 'shop:admin_orders' %}"; }
-    else{ const err=await r.json().catch(()=>({})); alert(err.error||'Lưu thất bại'); }
-  });
-})();
+  loadOrder();
 </script>
 {% endblock %}

@@ -179,9 +179,13 @@ def my_order_detail(request, id):
 @csrf_exempt
 @require_http_methods(["POST", "DELETE"])
 def api_cancel_my_order(request, id: str):
+    """
+    API hủy đơn của khách hàng (chỉ cho phép hủy khi trạng thái chưa hoàn tất)
+    """
     user = _cur_user_oid(request)
     if not user:
         return JsonResponse({"error": "Unauthorized"}, status=401)
+
     try:
         oid = ObjectId(id)
     except Exception:
@@ -192,15 +196,17 @@ def api_cancel_my_order(request, id: str):
         return JsonResponse({"error": "Không tìm thấy đơn hàng"}, status=404)
 
     status = (doc.get("trang_thai") or "cho_xu_ly").strip()
-    if status in ("huy", "hoan_thanh"):
+
+    # Không cho hủy nếu đơn đã hoàn tất hoặc đã hủy
+    if status in ("da_huy", "hoan_thanh"):
         return JsonResponse({"error": "Đơn đã kết thúc, không thể huỷ"}, status=409)
     if status == "dang_giao":
         return JsonResponse({"error": "Đơn đang giao, vui lòng liên hệ hỗ trợ"}, status=409)
 
-    # 👇 Sửa chỗ này: đổi 'da_huy' -> 'huy'
+    # ✅ Chuẩn hóa về "da_huy" để trùng Mongo Validation & ALLOWED_STATUS
     don_hang.update_one(
         {"_id": oid, "tai_khoan_id": user},
-        {"$set": {"trang_thai": "huy", "ngay_huy": timezone.now()}}
+        {"$set": {"trang_thai": "da_huy", "ngay_huy": timezone.now()}}
     )
 
-    return JsonResponse({"ok": True, "trang_thai": "huy"})
+    return JsonResponse({"ok": True, "trang_thai": "da_huy"})

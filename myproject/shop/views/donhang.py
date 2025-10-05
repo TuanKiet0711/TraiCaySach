@@ -45,7 +45,13 @@ def orders_list(request):
     page_size = min(max(_int(request.GET.get("page_size"), PAGE_SIZE_DEFAULT), 1), PAGE_SIZE_MAX)
 
     filter_ = {}
-    if status: filter_["trang_thai"] = status
+    if status:
+        if status == "da_huy":
+        # hỗ trợ cả "da_huy" và "huy"
+            filter_["trang_thai"] = {"$in": ["da_huy", "huy"]}
+        else:
+            filter_["trang_thai"] = status
+
     if pay: filter_["phuong_thuc_thanh_toan"] = pay
     q_oid = _safe_oid(q)
     if q and q_oid: filter_["_id"] = q_oid
@@ -122,9 +128,11 @@ def order_create(request):
     return render(request, "shop/admin/orders_create.html", {"products": products, "accounts": accounts})
 
 def order_edit(request, id: str):
+    request.session['is_admin'] = True
     return render(request, "shop/admin/orders_edit.html", {"order_id": id})
 
 def order_delete(request, id: str):
+    request.session['is_admin'] = True
     return render(request, "shop/admin/orders_delete.html", {"order_id": id})
 
 def order_detail_page(request, id: str):

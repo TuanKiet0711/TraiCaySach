@@ -5,197 +5,184 @@
 
 {% block content %}
 <style>
-  html, body {height: 100%; overflow: hidden;}
-  .admin-fixed {height: calc(100vh - 0px); display: flex; flex-direction: column; overflow: hidden;}
+  html, body {height:100%; overflow:hidden;}
+  .admin-fixed {height:calc(100vh - 0px); display:flex; flex-direction:column; overflow:hidden;}
   .toolbar-tight {margin-bottom:.5rem!important;}
   .card-body-tight {padding:.5rem 1rem!important;}
   .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
 
-  .searchbar { --h: 38px; flex:1 1 auto; }
-  .searchbar .inputbox {position:relative;flex:1 1 auto;min-width:260px;}
+  /* Thanh tìm kiếm */
+  .searchbar {--h:38px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .searchbar .inputbox {position:relative; flex:1; min-width:280px;}
   .searchbar .inputbox .icon {
     position:absolute; left:12px; top:50%; transform:translateY(-50%);
-    opacity:.65; color:#6c757d;
+    opacity:.6; color:#6c757d;
   }
-  .searchbar .inputbox input.form-control {
-    height:var(--h); padding-left:38px; padding-right:40px;
-    border-radius:12px; border:1px solid rgba(0,0,0,.08);
-    box-shadow:0 6px 18px rgba(30,60,120,.06);
+  .searchbar .inputbox input {
+    height:var(--h); padding-left:38px; border-radius:12px;
+    border:1px solid rgba(0,0,0,.08); box-shadow:0 6px 18px rgba(30,60,120,.06);
   }
-  .searchbar .inputbox .btn-clear {
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    border:none; background:transparent; opacity:.5;
+  .searchbar select {
+    height:var(--h); border-radius:12px; border:1px solid rgba(0,0,0,.08);
+    box-shadow:0 6px 18px rgba(30,60,120,.04); min-width:160px;
   }
   .searchbar .btn-find {
-    height:var(--h);
-    background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
-    color:#fff; border:none; font-weight:600; border-radius:12px;
-    padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);
-    transition:transform .08s ease,filter .2s ease;
+    height:var(--h); background:#3b82f6; color:#fff; border:none;
+    border-radius:12px; font-weight:600; box-shadow:0 8px 16px rgba(30,60,120,.15);
+    transition:transform .08s ease, filter .15s ease;
   }
-  .btn-reset {border-radius:12px;height:var(--h);margin-left:8px;}
-  .select-tight {height:var(--h); border-radius:12px;}
+  .searchbar .btn-find:hover {filter:brightness(1.05); transform:translateY(-1px);}
+  .btn-reset {height:var(--h); border-radius:12px;}
 
-  .pagination-fixed {
-    position:sticky; bottom:0; background:#fff; border-top:1px solid rgba(0,0,0,.05);
-    padding:.5rem .75rem; display:flex; justify-content:flex-start; align-items:center;
-  }
-  .pagination-fixed .pagination {gap: 4px; margin-bottom:0;}
+  /* Bảng */
+  .table th, .table td {vertical-align:middle;}
+  .table thead {background:#f9fafb;}
+  .table tbody tr:hover {background:#f8faff;}
+
+  /* Badge trạng thái */
+  .status-badge {text-transform:none;}
+  .st-cho_xu_ly   {background:#fff7ed; color:#9a3412; border:1px solid #fed7aa;}
+  .st-da_xac_nhan {background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;}
+  .st-dang_giao   {background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd;}
+  .st-hoan_thanh  {background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0;}
+  .st-da_huy,
+  .st-huy         {background:#fef2f2; color:#991b1b; border:1px solid #fecaca;}
+
+  /* Phân trang dính */
+  .pagination-fixed {position:sticky; bottom:0; background:#fff; border-top:1px solid #eee;
+    padding:.5rem .75rem; display:flex; align-items:center; justify-content:flex-start;}
+  .pagination-fixed .pagination {margin-bottom:0; gap:4px;}
   .pagination-fixed .page-link {
-    min-width: 34px; height: 34px; padding: 0.25rem 0.6rem; text-align:center;
-    line-height: 1.5; border-radius: 50% !important; color: #495057; border:none; background:#f8f9fa;
-    box-shadow: 0 2px 6px rgba(0,0,0,.05); transition: all .2s ease;
+    min-width:34px; height:34px; border:none; border-radius:50%!important;
+    color:#333; background:#f8f9fa; box-shadow:0 2px 6px rgba(0,0,0,.05);
+    transition:all .15s ease;
   }
-  .pagination-fixed .page-link:hover { background:#4f8cff; color:#fff; }
+  .pagination-fixed .page-link:hover {background:#3b82f6; color:#fff;}
   .pagination-fixed .page-item.active .page-link {
-    background:#3b78ff; color:#fff; box-shadow:0 4px 12px rgba(60,120,240,.25);
+    background:#3b82f6; color:#fff; box-shadow:0 4px 12px rgba(30,60,120,.25);
   }
-  .pagination-fixed .page-item.disabled .page-link { opacity:.5; pointer-events:none; background:#f1f1f1; }
 </style>
 
 <div class="admin-fixed">
-
-  <!-- Thanh tìm kiếm + lọc + thêm -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
-    <form id="searchForm" class="d-flex searchbar align-items-center gap-2" method="get" action="">
+  <!-- Thanh tìm kiếm -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center toolbar-tight">
+    <form method="get" action="" class="searchbar flex-grow-1 me-2">
       <div class="inputbox">
         <i class="bi bi-search icon"></i>
-        <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}"
-               class="form-control" placeholder="Tìm theo ID đơn (ObjectId)…">
-        <button type="button" class="btn-clear d-none" id="btnClear" aria-label="Xóa tìm">
-          <i class="bi bi-x-circle"></i>
-        </button>
+        <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Tìm theo mã đơn, tài khoản...">
       </div>
 
-      <select name="status" class="form-select select-tight" style="min-width:160px">
-        <option value="">Trạng thái: Tất cả</option>
-        <option value="cho_xu_ly"  {% if status == 'cho_xu_ly' %}selected{% endif %}>Chờ xử lý</option>
-        <option value="dang_giao"  {% if status == 'dang_giao' %}selected{% endif %}>Đang giao</option>
+      <!-- Bộ lọc trạng thái -->
+      <select name="status">
+        <option value="">Tất cả trạng thái</option>
+        <option value="cho_xu_ly" {% if status == 'cho_xu_ly' %}selected{% endif %}>Chờ xử lý</option>
+        <option value="da_xac_nhan" {% if status == 'da_xac_nhan' %}selected{% endif %}>Đã xác nhận</option>
+        <option value="dang_giao" {% if status == 'dang_giao' %}selected{% endif %}>Đang giao</option>
         <option value="hoan_thanh" {% if status == 'hoan_thanh' %}selected{% endif %}>Hoàn thành</option>
-        <option value="da_huy"     {% if status == 'da_huy' %}selected{% endif %}>Đã hủy</option>
+        <option value="da_huy" {% if status == 'da_huy' %}selected{% endif %}>Đã hủy</option>
       </select>
 
-      <select name="pay" class="form-select select-tight" style="min-width:160px">
-        <option value="">Thanh toán: Tất cả</option>
-        <option value="cod"   {% if pay == 'cod' %}selected{% endif %}>COD</option>
-        <option value="bank"  {% if pay == 'bank' %}selected{% endif %}>Chuyển khoản</option>
-        <option value="momo"  {% if pay == 'momo' %}selected{% endif %}>Momo</option>
-        <option value="card"  {% if pay == 'card' %}selected{% endif %}>Thẻ</option>
-      </select>
-
-      <select name="sort" class="form-select select-tight" style="min-width:160px">
-        <option value="newest"     {% if sort == 'newest' %}selected{% endif %}>Mới nhất</option>
-        <option value="oldest"     {% if sort == 'oldest' %}selected{% endif %}>Cũ nhất</option>
-        <option value="total_desc" {% if sort == 'total_desc' %}selected{% endif %}>Tổng tiền ↓</option>
-        <option value="total_asc"  {% if sort == 'total_asc' %}selected{% endif %}>Tổng tiền ↑</option>
-      </select>
-
-      <button class="btn btn-find" type="submit">
-        <i class="bi bi-funnel me-1"></i>Tìm
-      </button>
-      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_orders' %}">
-        <i class="bi bi-x-circle me-1"></i>Xóa lọc
-      </a>
+      <button type="submit" class="btn btn-find"><i class="bi bi-funnel me-1"></i>Tìm</button>
+      <a href="{% url 'shop:admin_orders' %}" class="btn btn-light btn-reset"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
     </form>
-
-    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_order_create' %}">+ Thêm đơn hàng</a>
   </div>
 
-  <!-- Bảng đơn hàng -->
-  <div class="card shadow-sm table-flex">
+  <!-- Bảng -->
+  <div class="card shadow-sm border-0 rounded-4 table-flex">
     <div class="card-body card-body-tight">
       <div class="table-responsive">
         <table class="table align-middle mb-0">
           <thead>
             <tr>
-              <th style="width:14%">ID</th>
-              <th style="width:14%">Tài khoản</th>
-              <th style="width:16%">Sản phẩm</th>
-              <th style="width:8%" class="text-end">SL</th>
-              <th style="width:10%" class="text-end">Đơn giá</th>
-              <th style="width:12%" class="text-end">Tổng tiền</th>
+              <th style="width:12%">Mã đơn</th>
+              <th style="width:15%">Tài khoản</th>
+              <th style="width:20%">Sản phẩm</th>
+              <th class="text-center" style="width:8%">SL</th>
+              <th class="text-end" style="width:10%">Tổng tiền</th>
               <th style="width:10%">Thanh toán</th>
               <th style="width:10%">Trạng thái</th>
-              <th style="width:12%">Ngày tạo</th>
-              <th class="text-end" style="width:10%">Hành động</th>
+              <th class="text-end" style="width:15%">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {% if items %}
-              {% for it in items %}
-                <tr>
-                  <td><a class="small" href="{% url 'shop:admin_order_detail' it.id %}"><code>{{ it.id }}</code></a></td>
-                  <td>{{ it.tai_khoan }}</td>
-                  <td>{{ it.san_pham }}</td>
-                  <td class="text-end">{{ it.so_luong|intcomma }}</td>
-                  <td class="text-end">{{ it.don_gia|intcomma }} đ</td>
-                  <td class="text-end fw-semibold">{{ it.tong_tien|intcomma }} đ</td>
-                  <td class="text-muted">{{ it.phuong_thuc_thanh_toan|upper }}</td>
-                  <td>
-                    {% if it.trang_thai == 'cho_xu_ly' %}<span class="badge text-bg-secondary">Chờ xử lý</span>{% endif %}
-                    {% if it.trang_thai == 'dang_giao' %}<span class="badge text-bg-info">Đang giao</span>{% endif %}
-                    {% if it.trang_thai == 'hoan_thanh' %}<span class="badge text-bg-success">Hoàn thành</span>{% endif %}
-                    {% if it.trang_thai == 'da_huy' %}<span class="badge text-bg-danger">Đã hủy</span>{% endif %}
-                  </td>
-                  <td class="text-muted small">{{ it.ngay_tao|date:"Y-m-d H:i" }}</td>
-                  <td class="text-end">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_order_edit' it.id %}">
-                      <i class="bi bi-pencil"></i> Sửa
-                    </a>
-                    <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_order_delete' it.id %}">
-                      <i class="bi bi-trash"></i> Xóa
-                    </a>
-                  </td>
-                </tr>
-              {% endfor %}
-              {% for _ in placeholders %}
-                <tr><td colspan="10">&nbsp;</td></tr>
+              {% for d in items %}
+              <tr>
+                <td><code class="small">{{ d.id|slice:":8" }}</code></td>
+                <td>{{ d.tai_khoan }}</td>
+                <td>{{ d.san_pham }}</td>
+                <td class="text-center">{{ d.so_luong }}</td>
+                <td class="text-end">{{ d.tong_tien|intcomma }} đ</td>
+                <td class="text-uppercase">{{ d.phuong_thuc_thanh_toan|default:"cod" }}</td>
+                <td>
+                  <span class="badge rounded-pill status-badge st-{{ d.trang_thai }}">{{ d.trang_thai }}</span>
+                </td>
+                <td class="text-end">
+  {% if d.id %}
+    <a href="{% url 'shop:admin_order_edit' d.id %}" class="btn btn-sm btn-outline-primary rounded-pill me-1">
+      <i class="bi bi-pencil"></i> Sửa
+    </a>
+    <a href="{% url 'shop:admin_order_delete' d.id %}" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-trash"></i> Xóa
+    </a>
+  {% else %}
+    <button class="btn btn-sm btn-outline-secondary rounded-pill me-1" disabled>
+      <i class="bi bi-pencil"></i> Sửa
+    </button>
+    <button class="btn btn-sm btn-outline-secondary" disabled>
+      <i class="bi bi-trash"></i> Xóa
+    </button>
+  {% endif %}
+</td>
+
+              </tr>
               {% endfor %}
             {% else %}
-              <tr><td colspan="10" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
-              {% for _ in placeholders %}
-                <tr><td colspan="10">&nbsp;</td></tr>
-              {% endfor %}
+              <tr><td colspan="8" class="text-center text-muted py-4">Không có đơn hàng</td></tr>
             {% endif %}
           </tbody>
         </table>
       </div>
 
+      <!-- Phân trang -->
       <div class="pagination-fixed w-100">
-        <div class="me-3 text-muted small">Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục</div>
-        <nav aria-label="Pagination">
+        <div class="me-3 small text-muted">Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} đơn</div>
+        <nav>
           <ul class="pagination mb-0">
             <li class="page-item {% if not has_prev %}disabled{% endif %}">
-              <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">‹</a>
+              <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}">‹</a>
             </li>
             {% for p in page_numbers %}
-              <li class="page-item {% if p == page %}active{% endif %}">
-                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">{{ p }}</a>
-              </li>
+              {% if p == page %}
+              <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+              {% else %}
+              <li class="page-item"><a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}">{{ p }}</a></li>
+              {% endif %}
             {% endfor %}
             <li class="page-item {% if not has_next %}disabled{% endif %}">
-              <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if pay %}&pay={{ pay }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}">›</a>
+              <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if status %}&status={{ status }}{% endif %}">›</a>
             </li>
           </ul>
         </nav>
       </div>
     </div>
   </div>
-
 </div>
 
 <script>
-(function(){
-  const qInput=document.getElementById('qInput');
-  const btnClear=document.getElementById('btnClear');
-  const form=document.getElementById('searchForm');
-  function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
-  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();});
-  qInput.addEventListener('input',toggleClear);
-  document.addEventListener('keydown',e=>{
-    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
+  // Hiển thị trạng thái tiếng Việt chuẩn
+  const mapStatus={
+    cho_xu_ly:"Chờ xử lý",
+    da_xac_nhan:"Đã xác nhận",
+    dang_giao:"Đang giao",
+    hoan_thanh:"Hoàn thành",
+    da_huy:"Đã hủy",
+    huy:"Đã hủy"
+  };
+  document.querySelectorAll('.status-badge').forEach(el=>{
+    const cls=[...el.classList].find(c=>c.startsWith('st-'))||'';
+    const st=cls.replace('st-','');
+    el.textContent=mapStatus[st]||el.textContent;
   });
-  toggleClear();
-})();
 </script>
 {% endblock %}

@@ -1,83 +1,165 @@
 {% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
 {% block title %}Xóa đơn hàng{% endblock %}
 {% block page_title %}Xóa đơn hàng{% endblock %}
 
 {% block content %}
-<div class="card border-danger shadow-sm">
-  <div class="card-body">
-    <h5 class="text-danger mb-3">Bạn chắc chắn muốn xóa đơn hàng này?</h5>
+<div class="container py-4" style="max-width:960px">
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body p-4">
 
-    <div class="mb-2">
-      <span class="text-muted">ID:</span>
-      <code class="small">{{ order_id }}</code>
-    </div>
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0 text-danger">Thông tin đơn hàng</h4>
+        <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-secondary rounded-pill">← Quay lại</a>
+      </div>
 
-    <dl class="row mb-0">
-      <dt class="col-sm-4">Tài khoản</dt>
-      <dd class="col-sm-8" id="oTk">—</dd>
+      <div id="alert" class="alert d-none mb-3"></div>
 
-      <dt class="col-sm-4">Sản phẩm</dt>
-      <dd class="col-sm-8" id="oSp">—</dd>
+      <!-- Status row -->
+      <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+        <div>Mã đơn: <code id="order-code">{{ order_id|slice:":8" }}</code></div>
+        <div>Trạng thái: <span id="status-badge" class="badge rounded-pill px-3 py-2">Đang tải...</span></div>
+      </div>
 
-      <dt class="col-sm-4">Số lượng</dt>
-      <dd class="col-sm-8" id="oSl">—</dd>
+      <!-- Order summary -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted">Tài khoản</div>
+            <div id="order-account" class="fw-semibold mt-1">—</div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 rounded-3 border bg-light h-100">
+            <div class="small text-muted">Phương thức thanh toán</div>
+            <div id="order-pay" class="fw-semibold mt-1">—</div>
+          </div>
+        </div>
+      </div>
 
-      <dt class="col-sm-4">Đơn giá</dt>
-      <dd class="col-sm-8"><span id="oDg">—</span> <span class="text-muted">VNĐ</span></dd>
+      <!-- Buyer info -->
+      <div class="p-3 rounded-3 border mb-3">
+        <div class="small text-muted mb-2">Thông tin người đặt</div>
+        <div class="row">
+          <div class="col-md-6">
+            <div><strong>Họ tên:</strong> <span id="buyer-name">—</span></div>
+            <div class="mt-2"><strong>SĐT:</strong> <span id="buyer-phone">—</span></div>
+          </div>
+          <div class="col-md-6">
+            <div><strong>Địa chỉ:</strong> <span id="buyer-address">—</span></div>
+            <div class="mt-2"><strong>Ghi chú:</strong> <span id="buyer-note">—</span></div>
+          </div>
+        </div>
+      </div>
 
-      <dt class="col-sm-4">Tổng tiền</dt>
-      <dd class="col-sm-8"><span id="oTt">—</span> <span class="text-muted">VNĐ</span></dd>
+      <!-- Items -->
+      <h6 class="text-secondary mb-2">Danh sách sản phẩm</h6>
+      <div class="table-responsive mb-2">
+        <table class="table align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Tên sản phẩm</th>
+              <th class="text-center" style="width:120px">Số lượng</th>
+              <th class="text-end" style="width:160px">Đơn giá</th>
+              <th class="text-end" style="width:180px">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody id="items-body">
+            <tr><td colspan="4" class="text-muted text-center">Đang tải...</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-      <dt class="col-sm-4">Thanh toán</dt>
-      <dd class="col-sm-8" id="oPay">—</dd>
+      <!-- Total -->
+      <div class="text-end h5 mb-4">
+        Tổng: <span id="order-total">0</span> đ
+      </div>
 
-      <dt class="col-sm-4">Trạng thái</dt>
-      <dd class="col-sm-8" id="oStatus">—</dd>
+      <!-- Actions -->
+      <div class="d-flex gap-2 justify-content-center">
+        <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-secondary rounded-pill px-4">← Quay lại</a>
+        <button id="btn-delete" class="btn btn-danger rounded-pill px-4" disabled>
+          <i class="bi bi-trash"></i> Xóa đơn
+        </button>
+      </div>
 
-      <dt class="col-sm-4">Ngày tạo</dt>
-      <dd class="col-sm-8" id="oDate">—</dd>
-    </dl>
-
-    <hr class="my-4"/>
-    <div class="d-flex flex-wrap gap-2">
-      <button id="btnDelete" class="btn btn-danger"><i class="bi bi-trash me-1"></i> Xóa</button>
-      <a class="btn btn-secondary" href="{% url 'shop:admin_orders' %}">Hủy</a>
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<style>
+  .st-cho_xu_ly{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+  .st-da_xac_nhan{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+  .st-dang_giao{background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd}
+  .st-hoan_thanh{background:#ecfdf5;color:#065f46;border:1px solid #bbf7d0}
+  .st-da_huy,.st-huy{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+</style>
+
 <script>
-;(async function(){
-  const id="{{ order_id }}";
-  const $=(id)=>document.getElementById(id);
-  function getCookie(name){let v=null;if(document.cookie)for(let c of document.cookie.split(';')){c=c.trim();if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}}return v}
-  const CSRF=getCookie('csrftoken');
-  const fmt=(n)=>{const x=parseInt(n,10);return isNaN(x)?'—':x.toLocaleString('vi-VN')}
+const ORDER_ID="{{ order_id }}";
+const API_URL=`/api/orders/${ORDER_ID}/`;
+const stText={cho_xu_ly:"Chờ xử lý",da_xac_nhan:"Đã xác nhận",dang_giao:"Đang giao",hoan_thanh:"Hoàn thành",da_huy:"Đã hủy",huy:"Đã hủy"};
 
-  const r=await fetch(`/api/orders/${id}/`);
-  if(r.ok){
-    const d=await r.json();
-    $('oTk').textContent = d.tai_khoan_ten || d.tai_khoan_id || '—';
-    $('oSp').textContent = d.san_pham_ten || d.san_pham_id || '—';
-    $('oSl').textContent = String(d.so_luong||'—');
-    $('oDg').textContent = fmt(d.don_gia);
-    $('oTt').textContent = fmt(d.tong_tien);
-    $('oPay').textContent = (d.phuong_thuc_thanh_toan||'').toUpperCase();
-    const st=d.trang_thai||'';
-    $('oStatus').textContent = st==='cho_xu_ly'?'Chờ xử lý':st==='dang_giao'?'Đang giao':st==='hoan_thanh'?'Hoàn thành':st==='da_huy'?'Đã hủy':'—';
-    $('oDate').textContent = (d.ngay_tao||'').replace('T',' ').slice(0,16);
-  }else{
-    document.querySelector('.card-body').insertAdjacentHTML('afterbegin','<div class="alert alert-danger">Không tìm thấy đơn hàng</div>');
-  }
+function vnd(n){try{return Number(n).toLocaleString('vi-VN')}catch{return n}}
+function canDelete(st){return st==='cho_xu_ly'||st==='da_huy'||st==='huy'}
+function showAlert(msg,type){const el=document.getElementById('alert');el.className=`alert alert-${type}`;el.textContent=msg;el.classList.remove('d-none');}
 
-  $('btnDelete').addEventListener('click', async ()=>{
-    if(!confirm('Xóa đơn hàng này? Hành động không thể hoàn tác.')) return;
-    const k=await fetch(`/api/orders/${id}/`,{method:'DELETE',headers:{'X-CSRFToken':CSRF}});
-    if(k.ok){ window.location="{% url 'shop:admin_orders' %}"; }
-    else{ const e=await k.json().catch(()=>({})); alert(e.error||'Không thể xóa'); }
+async function loadOrder(){
+ try{
+  const r=await fetch(API_URL,{credentials:'include'});
+  if(!r.ok)throw new Error('Không tải được đơn hàng');
+  const o=await r.json();
+
+  const st=(o.trang_thai||'').trim();
+  const badge=document.getElementById('status-badge');
+  badge.textContent=stText[st]||st||'—';
+  if(st) badge.classList.add('st-'+st);
+
+  document.getElementById('order-account').textContent=o.tai_khoan_ten||'—';
+  document.getElementById('order-pay').textContent=(o.phuong_thuc_thanh_toan||'cod').toUpperCase();
+  document.getElementById('order-total').textContent=vnd(o.tong_tien||0);
+
+  const buyer=o.nguoi_dat||{};
+  document.getElementById('buyer-name').textContent=buyer.ten||'—';
+  document.getElementById('buyer-phone').textContent=buyer.sdt||'—';
+  document.getElementById('buyer-address').textContent=buyer.dia_chi||'—';
+  document.getElementById('buyer-note').textContent=buyer.ghi_chu||'—';
+
+  const body=document.getElementById('items-body');body.innerHTML='';
+  const items=Array.isArray(o.items)?o.items:[{san_pham_ten:o.san_pham_ten,so_luong:o.so_luong||1,don_gia:o.don_gia||0,tong_tien:o.tong_tien||0}];
+  items.forEach(it=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${it.san_pham_ten||'(Không rõ)'}</td>
+                  <td class="text-center">${it.so_luong}</td>
+                  <td class="text-end">${vnd(it.don_gia)} đ</td>
+                  <td class="text-end">${vnd(it.tong_tien)} đ</td>`;
+    body.appendChild(tr);
   });
-})();
+
+  const btn=document.getElementById('btn-delete');
+  if(canDelete(st)) btn.disabled=false;
+  else { btn.disabled=true; showAlert('Đơn không ở trạng thái cho phép xóa (chỉ Chờ xử lý / Đã hủy).','warning'); }
+
+ }catch{ showAlert('Không thể tải thông tin đơn hàng.','danger'); }
+}
+
+document.getElementById('btn-delete').addEventListener('click',async()=>{
+ if(!confirm('Bạn chắc chắn muốn xóa đơn này?')) return;
+ try{
+  const r=await fetch(API_URL,{method:'DELETE',credentials:'include'});
+  if(r.status===204){
+    alert('✅ Đã xóa đơn hàng thành công!');
+    window.location.href="{% url 'shop:admin_orders' %}";
+    return;
+  }
+  const d=await r.json().catch(()=>({}));
+  if(r.status===403) showAlert('Bạn không có quyền xóa.','danger');
+  else if(r.status===404) showAlert('Không tìm thấy đơn hàng.','danger');
+  else showAlert('Xóa thất bại'+(d.error?`: ${d.error}`:''),'danger');
+ }catch{ showAlert('Lỗi mạng, vui lòng thử lại.','danger'); }
+});
+
+loadOrder();
 </script>
 {% endblock %}

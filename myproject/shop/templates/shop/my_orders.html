@@ -121,7 +121,7 @@
   .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
   .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
   .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
-  .st-huy         { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
 
   .btn-outline-danger {
     border-color: #dc3545;
@@ -154,9 +154,16 @@
     }catch{return iso}
   }
   function mapStatusText(st){
-    const m={'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','huy':'Đã hủy'};
-    return m[st]||st;
-  }
+  const m={
+    'cho_xu_ly':'Chờ xử lý',
+    'da_xac_nhan':'Đã xác nhận',
+    'dang_giao':'Đang giao',
+    'hoan_thanh':'Hoàn thành',
+    'da_huy':'Đã hủy'
+  };
+  return m[st]||st;
+}
+
 
   // ---- Định dạng tiền & thời gian ----
   document.querySelectorAll('.money').forEach(el=>{el.textContent=vnd(el.dataset.v||el.textContent)});
