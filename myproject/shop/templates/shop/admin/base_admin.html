@@ -10,31 +10,62 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root{
-      --brand:#2e7d32;      /* xanh lá đậm */
-      --brand-2:#1e5f22;    /* xanh lá tối */
-      --muted:#eef7f0;      /* nền nhạt */
+    :root {
+      --brand: #2e7d32;    /* xanh lá đậm */
+      --brand-2: #1e5f22;  /* xanh lá tối */
+      --muted: #eef7f0;    /* nền nhạt */
     }
-    body{background:#fff; min-height:100vh;}
-    .admin-shell{display:flex; min-height:100vh; width:100%;}
-    .admin-sidebar{
-      width:260px; background:var(--brand); color:#fff; padding:16px 14px; position:sticky; top:0; height:100vh;
+    body { background: #fff; min-height: 100vh; }
+    .admin-shell { display: flex; min-height: 100vh; width: 100%; }
+
+    /* SIDEBAR */
+    .admin-sidebar {
+      width: 260px; background: var(--brand); color: #fff;
+      padding: 16px 14px; position: sticky; top: 0; height: 100vh;
     }
-    .admin-brand{font-weight:800; font-size:22px; margin:2px 8px 14px; letter-spacing:.2px;}
-    .admin-menu .btn{
-      width:100%; text-align:left; color:#e8ffe9; background:transparent; border:none;
-      padding:10px 12px; border-radius:10px; margin-bottom:8px; font-weight:600;
+    .admin-brand {
+      font-weight: 800; font-size: 22px;
+      margin: 2px 8px 14px; letter-spacing: .2px;
     }
-    .admin-menu .btn:hover{background:rgba(255,255,255,.12);}
-    .admin-menu .btn.active{background:#fff; color:var(--brand);}
-    .admin-main{flex:1; background:linear-gradient(180deg,#fff 0,#fff 60%, var(--muted) 60%, var(--muted) 100%);}
-    .admin-top{
-      display:flex; align-items:center; justify-content:space-between; padding:18px 28px;
+    .admin-menu .btn {
+      width: 100%; text-align: left; color: #e8ffe9;
+      background: transparent; border: none; padding: 10px 12px;
+      border-radius: 10px; margin-bottom: 8px; font-weight: 600;
     }
-    .page-title{font-weight:800; font-size:34px; margin:0;}
-    .card-link{border-radius:10px;}
-    .card-link .btn{border-radius:9px; font-weight:600;}
-    .muted-pill{font-size:12px; color:#3e7a42; background:#eaf6ec; border-radius:999px; padding:4px 10px;}
+    .admin-menu .btn:hover { background: rgba(255,255,255,.12); }
+    .admin-menu .btn.active { background: #fff; color: var(--brand); }
+
+    /* MAIN */
+    .admin-main {
+      flex: 1;
+      background: linear-gradient(180deg, #fff 0, #fff 60%, var(--muted) 60%, var(--muted) 100%);
+    }
+    .admin-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 28px;
+    }
+    .page-title { font-weight: 800; font-size: 34px; margin: 0; }
+    .muted-pill {
+      font-size: 12px; color: #3e7a42; background: #eaf6ec;
+      border-radius: 999px; padding: 4px 10px;
+    }
+
+    /* TOAST */
+    #toast-success {
+      position: fixed;
+      top: 12px; right: 12px;
+      z-index: 1060;
+      display: none;
+    }
+    #toast-success .toast {
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      min-width: 240px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      font-weight: 600;
+    }
   </style>
 
   {% block extra_head %}{% endblock %}
@@ -53,7 +84,7 @@
       <a class="btn {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}"
          href="{% url 'shop:admin_categories' %}"><i class="bi bi-columns-gap me-2"></i>Danh mục</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}"
-        href="{% url 'shop:admin_orders' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
+         href="{% url 'shop:admin_orders' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
       <a class="btn {% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}"
          href="{% url 'shop:admin_accounts' %}"><i class="bi bi-people me-2"></i>Tài khoản</a>
 
@@ -77,16 +108,17 @@
     </div>
 
     <div class="container pb-5">
+
+      <!-- Django messages (hiển thị qua toast) -->
       {% if messages %}
-  <div class="container pt-2">
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
+        <script>
+          window.addEventListener('DOMContentLoaded', function(){
+            {% for message in messages %}
+              showToast('{{ message|escapejs }}')
+            {% endfor %}
+          });
+        </script>
+      {% endif %}
 
       {% block content %}{% endblock %}
     </div>
@@ -94,7 +126,33 @@
 
 </div>
 
+<!-- Toast góc phải -->
+<div id="toast-success">
+  <div class="toast align-items-center show">
+    <div class="d-flex align-items-center p-2 ps-3">
+      <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+      <div class="toast-body" id="toast-msg">Thành công</div>
+      <button type="button" class="btn-close btn-close-white ms-auto me-2" onclick="hideToast()"></button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Hiển thị toast
+  window.showToast = function (msg = 'Thành công', duration = 2000) {
+    const toast = document.getElementById('toast-success');
+    const msgBox = document.getElementById('toast-msg');
+    msgBox.textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, duration);
+  };
+  window.hideToast = function () {
+    document.getElementById('toast-success').style.display = 'none';
+  };
+</script>
+
 {% block extra_js %}{% endblock %}
 </body>
 </html>

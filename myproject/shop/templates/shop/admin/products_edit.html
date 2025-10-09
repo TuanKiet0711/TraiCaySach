@@ -20,26 +20,42 @@
           <textarea id="mo_ta" class="form-control" rows="3"></textarea>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-          <!-- đổi sang text để format dấu phẩy khi gõ -->
-          <input
-            type="text"
-            id="gia"
-            class="form-control"
-            required
-            inputmode="numeric"
-            pattern="[0-9,]*"
-            placeholder="85,000"
-            autocomplete="off"
-          />
-         
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
+            <!-- type=text để format dấu phẩy khi gõ -->
+            <input
+              type="text"
+              id="gia"
+              class="form-control"
+              required
+              inputmode="numeric"
+              pattern="[0-9,]*"
+              placeholder="85,000"
+              autocomplete="off"
+            />
+          </div>
+
+          <!-- SỐ LƯỢNG TỒN -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="so_luong_ton">Số lượng tồn</label>
+            <input
+              type="number"
+              id="so_luong_ton"
+              class="form-control"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              value="0"
+              placeholder="Nhập tồn kho (>= 0)"
+              required
+            />
+          </div>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3 mt-3">
           <label class="form-label fw-semibold" for="hinh_anh_file">Hình ảnh</label>
           <input type="file" id="hinh_anh_file" class="form-control" accept="image/*" />
-        
           <input type="text" id="hinh_anh" class="form-control mt-2" placeholder="URL hoặc path (vd: sanpham/a.jpg)" />
           <div class="mt-2">
             <img id="preview_img" src="" alt="Xem trước hình ảnh" style="max-height:150px; display:none; border:1px solid #ccc; padding:3px;" />
@@ -130,6 +146,9 @@
   const initGia = (typeof cur.gia === 'number' ? String(cur.gia) : (cur.gia || ''))
   giaInput.value = formatComma(initGia)
 
+  // set số lượng tồn khi load
+  $('so_luong_ton').value = (typeof cur.so_luong_ton === 'number' ? cur.so_luong_ton : parseInt(cur.so_luong_ton || 0, 10)) || 0
+
   // ---- Danh mục (dropdown + hidden) ----
   const dmHidden = $('danh_muc_id')
   const dmLabel  = $('labelDanhMuc')
@@ -208,6 +227,7 @@
     const mo_ta = $('mo_ta').value.trim()
     const giaRaw = giaInput.value.trim()
     const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
+    const so_luong_ton = Math.max(0, parseInt($('so_luong_ton').value, 10) || 0) // <<< gửi tồn
     const danh_muc_id = dmHidden.value
     const urlText = $('hinh_anh').value.trim()
     const fileInput = $('hinh_anh_file')
@@ -224,8 +244,9 @@
       fd.append('_method', 'PUT')
       fd.append('ten_san_pham', ten)
       fd.append('mo_ta', mo_ta)
-      fd.append('gia', String(gia))            // gửi số nguyên (đã bỏ dấu phẩy)
+      fd.append('gia', String(gia))
       fd.append('danh_muc_id', danh_muc_id)
+      fd.append('so_luong_ton', String(so_luong_ton))   // <<< thêm vào multipart
       fd.append('hinh_anh', fileInput.files[0])
       if (urlText) fd.append('hinh_anh_text', urlText)
       r = await fetch(`/api/products/${id}/`, {
@@ -237,9 +258,10 @@
       const payload = {
         ten_san_pham: ten,
         mo_ta,
-        gia,                                    // gửi số nguyên (đã bỏ dấu phẩy)
+        gia,
         hinh_anh: urlText ? [urlText] : [],
-        danh_muc_id
+        danh_muc_id,
+        so_luong_ton                               // <<< thêm vào JSON
       }
       r = await fetch(`/api/products/${id}/`, {
         method: 'PUT',
@@ -248,12 +270,14 @@
       })
     }
 
-    if (r.ok) {
-      window.location = "{% url 'shop:admin_products' %}"
-    } else {
-      const err = await r.json().catch(() => ({}))
-      alert(err.error || 'Lưu thất bại')
-    }
+   // EDIT page JS (products_edit.html)
+if (r.ok) {
+  window.location = "{% url 'shop:admin_products' %}?ok=updated";
+} else {
+  const err = await r.json().catch(() => ({}));
+  alert(err.error || 'Lưu thất bại');
+}
+
   })
 })()
 </script>

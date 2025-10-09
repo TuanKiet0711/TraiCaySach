@@ -16,23 +16,40 @@
         <textarea id="mo_ta" class="form-control" rows="3" placeholder="Mô tả sản phẩm…"></textarea>
       </div>
 
-      <div class="mb-3">
-        <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-        <!-- đổi sang text để format được dấu phẩy khi gõ -->
-        <input
-          type="text"
-          id="gia"
-          class="form-control"
-          required
-          inputmode="numeric"
-          pattern="[0-9,]*"
-          placeholder="Nhập giá"
-          autocomplete="off"
-        />
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
+          <!-- type=text để format dấu phẩy khi gõ -->
+          <input
+            type="text"
+            id="gia"
+            class="form-control"
+            required
+            inputmode="numeric"
+            pattern="[0-9,]*"
+            placeholder="Nhập giá"
+            autocomplete="off"
+          />
+        </div>
 
+        <!-- SỐ LƯỢNG TỒN -->
+        <div class="col-md-6">
+          <label class="form-label fw-semibold" for="so_luong_ton">Số lượng tồn</label>
+          <input
+            type="number"
+            id="so_luong_ton"
+            class="form-control"
+            inputmode="numeric"
+            min="0"
+            step="1"
+            value="0"
+            placeholder="Nhập tồn kho (>= 0)"
+            required
+          />
+        </div>
       </div>
 
-      <div class="mb-3">
+      <div class="mb-3 mt-3">
         <label class="form-label fw-semibold" for="hinh_anh">Hình ảnh</label>
         <input type="file" id="hinh_anh" class="form-control" accept="image/*" />
         <div class="mt-2">
@@ -91,19 +108,16 @@
     if (document.cookie)
       for (let c of document.cookie.split(';')) {
         c = c.trim()
-        if (c.startsWith(name + '=')) {
-          v = decodeURIComponent(c.split('=')[1])
-          break
-        }
+        if (c.startsWith(name + '=')) { v = decodeURIComponent(c.split('=')[1]); break }
       }
     return v
   }
   const CSRF = getCookie('csrftoken')
 
   // ---- DOM refs ----
-  const form = document.getElementById('createForm')
+  const form      = document.getElementById('createForm')
   const fileInput = document.getElementById('hinh_anh')
-  const preview = document.getElementById('preview_img')
+  const preview   = document.getElementById('preview_img')
 
   // Dropdown Danh mục
   const dmHidden = document.getElementById('danh_muc_id')
@@ -111,73 +125,58 @@
   const dmError  = document.getElementById('dmError')
   const dmMenu   = document.querySelector('.dropdown .dropdown-menu')
 
-  // ---- Preview ảnh khi chọn file ----
+  // ---- Preview ảnh ----
   fileInput.addEventListener('change', () => {
     if (fileInput.files && fileInput.files[0]) {
       const reader = new FileReader()
-      reader.onload = e => {
-        preview.src = e.target.result
-        preview.style.display = 'block'
-      }
+      reader.onload = e => { preview.src = e.target.result; preview.style.display = 'block' }
       reader.readAsDataURL(fileInput.files[0])
     } else {
       preview.style.display = 'none'
     }
   })
 
-  // ---- Chọn danh mục từ dropdown (có scroll) ----
+  // ---- Chọn danh mục ----
   dmMenu.addEventListener('click', (e) => {
-    const item = e.target.closest('.dropdown-item')
-    if (!item) return
+    const item = e.target.closest('.dropdown-item'); if (!item) return
     e.preventDefault()
     dmHidden.value = item.dataset.id || ''
     dmLabel.textContent = item.textContent.trim() || '-- Chọn danh mục --'
     dmError.classList.add('d-none')
   })
 
-  // ---- Format giá: hiển thị 1,000 phân cách khi gõ ----
+  // ---- Format giá có dấu phẩy khi gõ ----
   const giaInput = document.getElementById('gia')
   const formatComma = (digitsStr) => {
-    // bỏ mọi ký tự không phải số, rồi thêm dấu phẩy 3 số
     const clean = (digitsStr || '').replace(/[^\d]/g, '')
     if (!clean) return ''
     return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   }
-
-  // Khi gõ/ dán
   giaInput.addEventListener('input', (e) => {
     const val = e.target.value
     const formatted = formatComma(val)
     if (formatted !== val) {
       const end = formatted.length
       e.target.value = formatted
-      // đơn giản: đặt caret ở cuối (đủ nhanh gọn)
       e.target.setSelectionRange(end, end)
     }
   })
-
-  // Chặn chữ cái
   giaInput.addEventListener('keypress', (e) => {
     const isDigit = /\d/.test(e.key)
-    const isControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key)
-    if (!isDigit && !isControl) {
-      e.preventDefault()
-    }
+    const isCtrl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key)
+    if (!isDigit && !isCtrl) e.preventDefault()
   })
+  giaInput.addEventListener('blur', (e) => { e.target.value = formatComma(e.target.value) })
 
-  // Format lại khi blur
-  giaInput.addEventListener('blur', (e) => {
-    e.target.value = formatComma(e.target.value)
-  })
-
-  // ---- Submit form ----
+  // ---- Submit ----
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
-    const ten = document.getElementById('ten').value.trim()
-    const mo_ta = document.getElementById('mo_ta').value.trim()
+    const ten    = document.getElementById('ten').value.trim()
+    const mo_ta  = document.getElementById('mo_ta').value.trim()
     const giaRaw = giaInput.value.trim()
-    const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
-    const danh_muc_id = dmHidden.value
+    const gia    = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
+    const danh_muc_id  = dmHidden.value
+    const so_luong_ton = Math.max(0, parseInt(document.getElementById('so_luong_ton').value, 10) || 0)
 
     if (!ten || !danh_muc_id) {
       if (!danh_muc_id) dmError.classList.remove('d-none')
@@ -188,11 +187,10 @@
     const formData = new FormData()
     formData.append('ten_san_pham', ten)
     formData.append('mo_ta', mo_ta)
-    formData.append('gia', gia) // gửi số nguyên (đã bỏ dấu phẩy)
+    formData.append('gia', gia)                 // số nguyên
     formData.append('danh_muc_id', danh_muc_id)
-    if (fileInput.files.length > 0) {
-      formData.append('hinh_anh', fileInput.files[0])
-    }
+    formData.append('so_luong_ton', so_luong_ton) // <<< THÊM TỒN
+    if (fileInput.files.length > 0) formData.append('hinh_anh', fileInput.files[0])
 
     const res = await fetch("{% url 'shop:api_products_create' %}", {
       method: 'POST',
@@ -200,12 +198,14 @@
       body: formData
     })
 
-    if (res.ok) {
-      window.location = "{% url 'shop:admin_products' %}"
-    } else {
-      const err = await res.json().catch(() => ({}))
-      alert(err.error || 'Tạo sản phẩm thất bại')
-    }
+   // CREATE page JS (products_create.html)
+if (res.ok) {
+  window.location = "{% url 'shop:admin_products' %}?ok=created";
+} else {
+  const err = await res.json().catch(() => ({}));
+  alert(err.error || 'Tạo sản phẩm thất bại');
+}
+
   })
 })()
 </script>

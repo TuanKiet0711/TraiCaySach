@@ -17,12 +17,27 @@
     </form>
   </div>
 </div>
+
+<div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true">
+  <div class="d-flex">
+    <div class="toast-body"></div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (async function(){
   const id = "{{ cat_id }}";
+  const toastEl = document.getElementById('toast');
+  function toast(msg, err=false){
+    toastEl.classList.remove('bg-success','bg-danger');
+    toastEl.classList.add(err?'bg-danger':'bg-success');
+    toastEl.querySelector('.toast-body').textContent = msg;
+    new bootstrap.Toast(toastEl,{delay:2000}).show();
+  }
+
   function getCookie(name){
     let v=null;
     if(document.cookie)for(let c of document.cookie.split(';')){
@@ -33,27 +48,26 @@
   }
   const CSRF = getCookie('csrftoken');
 
-  // nạp dữ liệu hiện tại
   const res = await fetch(`/api/categories/${id}/`);
-  if(!res.ok){ alert('Không tìm thấy danh mục'); window.location="{% url 'shop:admin_categories' %}"; return; }
+  if(!res.ok){ toast('Không tìm thấy danh mục', true); setTimeout(()=>window.location="{% url 'shop:admin_categories' %}",800); return; }
   const cur = await res.json();
   document.getElementById('ten').value = cur.ten_danh_muc || '';
 
-  // submit PUT
   document.getElementById('editForm').addEventListener('submit', async (e)=>{
     e.preventDefault();
     const ten = document.getElementById('ten').value.trim();
-    if(!ten) return;
+    if(!ten){ toast('Vui lòng nhập tên danh mục', true); return; }
     const r = await fetch(`/api/categories/${id}/`, {
       method: 'PUT',
-      headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF},
+      headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
       body: JSON.stringify({ ten_danh_muc: ten })
     });
     if(r.ok){
-      window.location="{% url 'shop:admin_categories' %}";
+      toast('Cập nhật thành công!');
+      setTimeout(()=>window.location="{% url 'shop:admin_categories' %}",700);
     } else {
       const err = await r.json().catch(()=>({}));
-      alert(err.error || 'Lưu thất bại');
+      toast(err.error || 'Lưu thất bại', true);
     }
   });
 })();

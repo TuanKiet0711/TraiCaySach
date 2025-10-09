@@ -2,8 +2,10 @@ from django.shortcuts import render
 from ..database import san_pham, danh_muc, don_hang, tai_khoan
 from math import ceil
 from bson import ObjectId
+from django.contrib import messages
 from .admin_required import admin_required
 from django.utils import timezone
+from datetime import datetime  # <-- THÊM
 
 PAGE_SIZE = 6
 
@@ -83,7 +85,7 @@ def categories_list(request):
     skip = (page - 1) * PAGE_SIZE
     cursor = (
         danh_muc.find(filter_, {"ten_danh_muc": 1})
-        .sort("ten_danh_muc", 1)
+        .sort([("_id", -1)])
         .skip(skip)
         .limit(PAGE_SIZE)
     )
@@ -129,6 +131,15 @@ def products_list(request):
     except ValueError:
         page = 1
 
+    # NEW: nhận ok và phát message
+    ok = (request.GET.get("ok") or "").strip()
+    if ok == "created":
+        messages.success(request, "Đã thêm sản phẩm thành công.")
+    elif ok == "updated":
+        messages.success(request, "Đã cập nhật sản phẩm thành công.")
+    elif ok == "deleted":
+        messages.success(request, "Đã xóa sản phẩm thành công.")
+
     filter_ = {}
     if q:
         filter_["ten_san_pham"] = {"$regex": q, "$options": "i"}
@@ -139,12 +150,14 @@ def products_list(request):
         page = total_pages
 
     skip = (page - 1) * PAGE_SIZE
+
+    # NEW: sort mới nhất trước ở giao diện admin luôn đồng bộ với API
     cursor = (
         san_pham.find(
             filter_,
-            {"ten_san_pham": 1, "mo_ta": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1}
+            {"ten_san_pham": 1, "mo_ta": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1, "so_luong_ton": 1}
         )
-        .sort("ten_san_pham", 1)
+        .sort([("_id", -1)])  # <- MỚI
         .skip(skip)
         .limit(PAGE_SIZE)
     )
@@ -163,10 +176,11 @@ def products_list(request):
         items.append({
             "id": str(sp["_id"]),
             "ten": sp.get("ten_san_pham") or "Sản phẩm",
-            "mo_ta": sp.get("mo_ta", ""),  # <--- thêm dòng này
+            "mo_ta": sp.get("mo_ta", ""),
             "gia": sp.get("gia", 0),
             "hinh_anh": sp["hinh_anh"][0] if sp.get("hinh_anh") else None,
             "danh_muc": cat_name,
+            "so_luong_ton": int(sp.get("so_luong_ton", 0)),
         })
 
     placeholders = max(0, PAGE_SIZE - len(items))
@@ -218,19 +232,17 @@ def accounts_list_page(request):
         "vai_tro": vai_tro,
         "page": page,
         "page_size": page_size,
-        "page_sizes": [10, 20, 50, 100],   # <- thêm dòng này
+        "page_sizes": [10, 20, 50, 100],
     })
+
 @admin_required
 def account_create(request):
-    # Chỉ render form, submit gọi API /api/accounts/create/
     return render(request, "shop/admin/account_create.html")
 
 @admin_required
 def account_edit(request, id: str):
-    # Chỉ render form, submit gọi API PUT /api/accounts/<id>/
     return render(request, "shop/admin/account_edit.html", {"account_id": id})
 
 @admin_required
 def account_delete(request, id: str):
-    # Xác nhận xóa, submit gọi API DELETE /api/accounts/<id>/
     return render(request, "shop/admin/account_delete.html", {"account_id": id})

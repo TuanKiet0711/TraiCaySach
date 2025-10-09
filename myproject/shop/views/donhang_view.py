@@ -239,7 +239,7 @@ def _serialize_order(doc, acc=None, sp_map=None):
         "phuong_thuc_thanh_toan": doc.get("phuong_thuc_thanh_toan") or "cod",
         "trang_thai": doc.get("trang_thai") or "cho_xu_ly",
         "ngay_tao": ngay_tao_iso,
-        "nguoi_dat": merged_receiver,   # 👈 thêm cho site/admin cần hiển thị
+        "nguoi_dat": merged_receiver,
     }
 
 
@@ -251,6 +251,36 @@ def _add_legacy_fields(d):
             "so_luong": first["so_luong"],
             "don_gia": first["don_gia"],
         })
+
+
+# =================== STOCK HELPERS ===================
+def _try_decrease_stock(items: list[dict]) -> tuple[bool, str]:
+    """
+    items: [{"san_pham_id": ObjectId, "so_luong": int}, ...]
+    Trừ tồn theo thứ tự. Nếu thiếu tồn 1 món -> rollback những món đã trừ trước đó.
+    Return: (ok: bool, message: str_if_fail)
+    """
+    decremented = []  # lưu (sp_id, qty) đã trừ để rollback
+    for it in items:
+        sp_id = it["san_pham_id"]
+        qty = int(it["so_luong"])
+        r = san_pham.update_one(
+            {"_id": sp_id, "so_luong_ton": {"$gte": qty}},
+            {"$inc": {"so_luong_ton": -qty}}
+        )
+        if r.matched_count == 0:
+            # rollback phần đã trừ
+            for sp_rolled, qty_rolled in decremented:
+                san_pham.update_one({"_id": sp_rolled}, {"$inc": {"so_luong_ton": qty_rolled}})
+            return (False, f"Sản phẩm {str(sp_id)} không đủ tồn kho")
+        decremented.append((sp_id, qty))
+    return (True, "")
+
+
+def _rollback_increase_stock(items: list[dict]) -> None:
+    """Cộng lại tồn kho cho các items (dùng khi cần rollback)."""
+    for it in items:
+        san_pham.update_one({"_id": it["san_pham_id"]}, {"$inc": {"so_luong_ton": int(it["so_luong"])}})
 
 
 # =================== LIST ORDERS ===================
@@ -350,7 +380,6 @@ def orders_list(request):
         }},
     ]
 
-    # 👇 Sắp xếp: mặc định theo ngay_tao ↓, _id ↓
     sort_map = {
         "newest": [("ngay_tao", -1), ("_id", -1)],
         "oldest": [("ngay_tao", 1), ("_id", 1)],
@@ -420,7 +449,7 @@ def orders_create(request):
         if not sp_oid or not so_luong or so_luong <= 0:
             return JsonResponse({"error": "san_pham_id / so_luong không hợp lệ"}, status=400)
 
-        sp_doc = san_pham.find_one({"_id": sp_oid}, {"gia": 1, "ten": 1, "ten_san_pham": 1})
+        sp_doc = san_pham.find_one({"_id": sp_oid}, {"gia": 1, "ten": 1, "ten_san_pham": 1, "so_luong_ton": 1})
         if not sp_doc:
             return JsonResponse({"error": f"Sản phẩm {sp_oid} không tồn tại"}, status=400)
 
@@ -438,6 +467,12 @@ def orders_create(request):
             "tong_tien": tien,
         })
 
+    # ====== TRỪ TỒN KHO TRƯỚC KHI TẠO ĐƠN ======
+    stock_req = [{"san_pham_id": it["san_pham_id"], "so_luong": it["so_luong"]} for it in items]
+    ok, msg = _try_decrease_stock(stock_req)
+    if not ok:
+        return JsonResponse({"error": "out_of_stock", "message": msg}, status=400)
+
     doc = {
         "tai_khoan_id": tk_oid,
         "items": items,
@@ -447,7 +482,7 @@ def orders_create(request):
         "ngay_tao": timezone.now(),
     }
 
-    # 👇 Gắn người nhận (nếu có trong payload)
+    # Người nhận
     receiver = _extract_receiver_from_payload(data)
     _apply_receiver_aliases(doc, receiver)
 
@@ -457,14 +492,17 @@ def orders_create(request):
     try:
         res = don_hang.insert_one(doc)
     except WriteError:
+        _rollback_increase_stock(stock_req)
         try:
             _add_legacy_fields(doc)
             res = don_hang.insert_one(doc)
         except Exception as e2:
             return JsonResponse({"error": "db_write", "message": str(e2)}, status=400)
     except DuplicateKeyError as e:
+        _rollback_increase_stock(stock_req)
         return JsonResponse({"error": "duplicate_key", "message": str(e)}, status=400)
     except Exception as e:
+        _rollback_increase_stock(stock_req)
         return JsonResponse({"error": "unknown", "message": str(e)}, status=500)
 
     created = don_hang.find_one({"_id": res.inserted_id})
@@ -494,6 +532,7 @@ def order_detail(request, id: str):
         acc = tai_khoan.find_one({"_id": doc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
         return JsonResponse(_serialize_order(doc, acc=acc, sp_map=sp_map))
 
+    # ----- multipart override to PUT -----
     if request.method == "POST" and (request.POST.get("_method") or "").upper() == "PUT":
         doc = don_hang.find_one({"_id": oid})
         if not doc:
@@ -507,11 +546,29 @@ def order_detail(request, id: str):
         if "phuong_thuc_thanh_toan" in data:
             update["phuong_thuc_thanh_toan"] = (data.get("phuong_thuc_thanh_toan") or "cod").strip()
 
+        # xử lý đổi trạng thái (kèm hoàn tồn / trừ lại khi cần)
+        old_status = doc.get("trang_thai") or "cho_xu_ly"
         if "trang_thai" in data:
             st = (data.get("trang_thai") or "").strip()
             if st and st not in ALLOWED_STATUS:
                 return JsonResponse({"error": "trang_thai không hợp lệ"}, status=400)
-            update["trang_thai"] = st or "cho_xu_ly"
+            new_status = st or "cho_xu_ly"
+
+            if old_status != new_status:
+                items = doc.get("items", [])
+                stock_req = [{"san_pham_id": it["san_pham_id"], "so_luong": int(it.get("so_luong", 0))} for it in items]
+
+                # Nếu chuyển sang "da_huy" => hoàn tồn
+                if new_status == "da_huy":
+                    _rollback_increase_stock(stock_req)
+
+                # Nếu chuyển từ "da_huy" -> trạng thái khác => trừ lại tồn (nếu đủ)
+                if old_status == "da_huy" and new_status != "da_huy":
+                    ok, msg = _try_decrease_stock(stock_req)
+                    if not ok:
+                        return JsonResponse({"error": "out_of_stock", "message": msg}, status=400)
+
+            update["trang_thai"] = new_status
 
         if not update:
             return JsonResponse({"error": "No fields to update"}, status=400)
@@ -544,12 +601,28 @@ def order_detail(request, id: str):
         if "phuong_thuc_thanh_toan" in body:
             update["phuong_thuc_thanh_toan"] = (body.get("phuong_thuc_thanh_toan") or "cod").strip()
 
+        # đổi trạng thái (hoàn tồn / trừ lại)
+        old_status = doc.get("trang_thai") or "cho_xu_ly"
         if "trang_thai" in body:
             st = (body.get("trang_thai") or "").strip()
             if st and st not in ALLOWED_STATUS:
                 return JsonResponse({"error": "trang_thai không hợp lệ"}, status=400)
-            update["trang_thai"] = st or "cho_xu_ly"
+            new_status = st or "cho_xu_ly"
 
+            if old_status != new_status:
+                items = doc.get("items", [])
+                stock_req = [{"san_pham_id": it["san_pham_id"], "so_luong": int(it.get("so_luong", 0))} for it in items]
+
+                if new_status == "da_huy":
+                    _rollback_increase_stock(stock_req)
+                if old_status == "da_huy" and new_status != "da_huy":
+                    ok, msg = _try_decrease_stock(stock_req)
+                    if not ok:
+                        return JsonResponse({"error": "out_of_stock", "message": msg}, status=400)
+
+            update["trang_thai"] = new_status
+
+        # Admin có thể chỉnh tai_khoan_id
         if request.is_admin and "tai_khoan_id" in body:
             val = body.get("tai_khoan_id")
             tk_new = _safe_oid(val) if val else None
@@ -557,6 +630,8 @@ def order_detail(request, id: str):
                 return JsonResponse({"error": "tai_khoan_id không hợp lệ"}, status=400)
             update["tai_khoan_id"] = tk_new
 
+        # Cập nhật items: tính lại tổng & KHÔNG tự động can thiệp tồn ở đây
+        # (nếu bạn muốn khi đổi items thì cũng trừ/hoàn tồn phần chênh lệch, ta có thể bổ sung sau)
         items_in = body.get("items", None)
         tong_tien = None
         sp_ids = []
@@ -619,6 +694,12 @@ def order_detail(request, id: str):
         if not request.is_admin and doc.get("tai_khoan_id") != request.user_oid:
             return JsonResponse({"error": "Forbidden"}, status=403)
 
+        # Nếu xóa đơn ở trạng thái KHÔNG phải "da_huy", ta nên hoàn tồn
+        if (doc.get("trang_thai") or "cho_xu_ly") != "da_huy":
+            items = doc.get("items", [])
+            stock_req = [{"san_pham_id": it["san_pham_id"], "so_luong": int(it.get("so_luong", 0))} for it in items]
+            _rollback_increase_stock(stock_req)
+
         r = don_hang.delete_one({"_id": oid})
         if r.deleted_count == 0:
             return JsonResponse({"error": "Not found"}, status=404)
@@ -659,6 +740,7 @@ def orders_checkout(request):
 
     # Chuẩn hoá items
     items, sp_ids, tong_tien = [], [], 0
+    stock_requests = []
     for it in cart_items:
         sp_oid = it.get("san_pham_id")
         if not isinstance(sp_oid, ObjectId):
@@ -681,6 +763,12 @@ def orders_checkout(request):
             "don_gia": don_gia,
             "tong_tien": tien,
         })
+        stock_requests.append({"san_pham_id": sp_oid, "so_luong": so_luong})
+
+    # ====== TRỪ TỒN KHO TRƯỚC KHI TẠO ĐƠN ======
+    ok, msg = _try_decrease_stock(stock_requests)
+    if not ok:
+        return JsonResponse({"error": "out_of_stock", "message": msg}, status=400)
 
     doc = {
         "tai_khoan_id": user_oid,
@@ -691,7 +779,7 @@ def orders_checkout(request):
         "ngay_tao": timezone.now(),
     }
 
-    # 👇 GẮN THÔNG TIN NGƯỜI NHẬN TỪ FORM CHECKOUT
+    # Gắn thông tin người nhận từ payload
     receiver = _extract_receiver_from_payload(data)
     _apply_receiver_aliases(doc, receiver)
 
@@ -701,17 +789,21 @@ def orders_checkout(request):
     try:
         res = don_hang.insert_one(doc)
     except WriteError:
+        _rollback_increase_stock(stock_requests)
         try:
             _add_legacy_fields(doc)
             res = don_hang.insert_one(doc)
         except Exception as e2:
             return JsonResponse({"error": "db_write", "message": str(e2)}, status=400)
     except DuplicateKeyError as e:
+        _rollback_increase_stock(stock_requests)
         return JsonResponse({"error": "duplicate_key", "message": str(e)}, status=400)
     except Exception as e:
+        _rollback_increase_stock(stock_requests)
         return JsonResponse({"error": "unknown", "message": str(e)}, status=500)
 
     created = don_hang.find_one({"_id": res.inserted_id})
+    # Xoá giỏ sau khi tạo đơn
     gio_hang.delete_many({"tai_khoan_id": user_oid})
 
     acc = tai_khoan.find_one({"_id": user_oid}, {"ho_ten": 1, "ten": 1, "email": 1})

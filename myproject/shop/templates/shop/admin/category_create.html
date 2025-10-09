@@ -17,14 +17,30 @@
     </form>
   </div>
 </div>
+
+<!-- Toast -->
+<div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true">
+  <div class="d-flex">
+    <div class="toast-body"></div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 (function(){
-  function getCookie(name) {
+  const toastEl = document.getElementById('toast');
+  function toast(msg, isError=false){
+    toastEl.classList.remove('bg-success','bg-danger');
+    toastEl.classList.add(isError?'bg-danger':'bg-success');
+    toastEl.querySelector('.toast-body').textContent = msg;
+    new bootstrap.Toast(toastEl,{delay:2000}).show();
+  }
+
+  function getCookie(name){
     let v=null;
-    if(document.cookie) for(let c of document.cookie.split(';')){
+    if(document.cookie)for(let c of document.cookie.split(';')){
       c=c.trim();
       if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
     }
@@ -32,20 +48,23 @@
   }
   const CSRF = getCookie('csrftoken');
   const form = document.getElementById('createForm');
+
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const ten = document.getElementById('ten').value.trim();
-    if(!ten) return;
+    if(!ten){ toast('Vui lòng nhập tên danh mục', true); return; }
+
     const res = await fetch("{% url 'shop:api_categories_create' %}", {
       method: 'POST',
-      headers: {'Content-Type':'application/json', 'X-CSRFToken': CSRF},
+      headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
       body: JSON.stringify({ ten_danh_muc: ten })
     });
     if(res.ok){
-      window.location = "{% url 'shop:admin_categories' %}";
+      toast('Thêm danh mục thành công!');
+      setTimeout(()=>window.location="{% url 'shop:admin_categories' %}",700);
     } else {
       const err = await res.json().catch(()=>({}));
-      alert(err.error || 'Tạo danh mục thất bại');
+      toast(err.error || 'Tạo danh mục thất bại', true);
     }
   });
 })();

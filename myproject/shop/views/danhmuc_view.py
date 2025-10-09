@@ -49,7 +49,7 @@ def categories_list(request):
 
     cursor = (
         danh_muc.find(filter_, {"ten_danh_muc": 1})
-        .sort("ten_danh_muc", 1)
+        .sort("_id", -1)
         .skip(skip)
         .limit(page_size)
     )

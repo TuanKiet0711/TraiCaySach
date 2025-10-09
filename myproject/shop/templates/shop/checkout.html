@@ -21,14 +21,26 @@
           <div class="card-body">
             <h5 class="card-title mb-3">Thông tin nhận hàng</h5>
 
-            <form id="checkoutForm" class="row g-3">
+            <form id="checkoutForm" class="row g-3" autocomplete="off" novalidate>
               <div class="col-md-6">
                 <label class="form-label">Họ và tên</label>
                 <input name="ho_ten" type="text" class="form-control" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Số điện thoại</label>
-                <input name="sdt" type="tel" class="form-control" required>
+                <input
+                  name="sdt"
+                  id="inputPhone"
+                  type="tel"
+                  class="form-control"
+                  required
+                  inputmode="numeric"
+                  pattern="^[0-9]{8,15}$"
+                  maxlength="15"
+                  placeholder=""
+                  aria-describedby="phoneHelp"
+                >
+                
               </div>
               <div class="col-12">
                 <label class="form-label">Địa chỉ</label>
@@ -162,6 +174,33 @@
   const paySelect   = document.getElementById('paymentSelect');
   const bankWrap    = document.getElementById('bankTransferWrap');
   const memoInput   = document.getElementById('bankMemo');
+  const inputPhone  = document.getElementById('inputPhone');
+
+  // ====== CHỈ CHO NHẬP SỐ 0–9 CHO SĐT ======
+  // Làm sạch mọi ký tự không phải số khi gõ / dán / kéo-thả
+  const digitsOnly = (s) => (s || '').replace(/\D+/g, '').slice(0, 15);
+  function sanitizePhone() {
+    const cur = inputPhone.value;
+    const clean = digitsOnly(cur);
+    if (cur !== clean) inputPhone.value = clean;
+  }
+  inputPhone.addEventListener('input', sanitizePhone);
+  inputPhone.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    document.execCommand('insertText', false, digitsOnly(text));
+  });
+  inputPhone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData('text');
+    inputPhone.value = digitsOnly(text);
+  });
+  // Ngăn nhập ký tự không phải số từ bàn phím (trừ phím điều hướng / control)
+  inputPhone.addEventListener('keypress', (e) => {
+    const isDigit = /[0-9]/.test(e.key);
+    const isCtrl = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End","Enter"].includes(e.key);
+    if (!isDigit && !isCtrl) e.preventDefault();
+  });
 
   // Toggle hướng dẫn chuyển khoản
   function toggleBankGuide(){
@@ -232,17 +271,26 @@
 
   // Đặt hàng
   document.getElementById('btnPlaceOrder').addEventListener('click', async ()=>{
+    // Validate SĐT lần cuối
+    sanitizePhone();
+    const phone = inputPhone.value;
+    if (!phone || !/^[0-9]{8,15}$/.test(phone)) {
+      toast('SĐT không hợp lệ (chỉ số 0–9, 8–15 ký tự).', true);
+      inputPhone.focus();
+      return;
+    }
+
     const fd = new FormData(form);
     const payload = {
       use_cart: true,
       phuong_thuc_thanh_toan: fd.get('phuong_thuc_thanh_toan') || 'cod',
       ho_ten: (fd.get('ho_ten')||'').trim(),
-      sdt: (fd.get('sdt')||'').trim(),
+      sdt: phone,
       dia_chi: (fd.get('dia_chi')||'').trim(),
       ghi_chu: (fd.get('ghi_chu')||'').trim(),
     };
-    if(!payload.ho_ten || !payload.sdt || !payload.dia_chi){
-      toast('Vui lòng điền đủ họ tên, SĐT, địa chỉ', true); return;
+    if(!payload.ho_ten || !payload.dia_chi){
+      toast('Vui lòng điền đủ họ tên và địa chỉ', true); return;
     }
 
     const res = await fetch('/api/orders/checkout/', {
@@ -255,7 +303,7 @@
       setTimeout(()=>{ window.location.href = "{% url 'shop:my_orders_page' %}"; }, 800);
     }else{
       let err = {}; try{ err = await res.json(); }catch(_){}
-      toast('Lỗi đặt hàng: ' + (err.error || res.status), true);
+      toast('Lỗi đặt hàng: ' + (err.message || err.error || res.status), true);
     }
   });
 

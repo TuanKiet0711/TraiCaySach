@@ -15,7 +15,6 @@ PAGE_SIZE_MAX = 100
 
 # ============ Helpers ============
 def _json_required(request):
-    """Yêu cầu Content-Type: application/json"""
     ctype = request.content_type or ""
     if not ctype.startswith("application/json"):
         return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
@@ -37,14 +36,9 @@ def _safe_objectid(id_str):
 
 
 def _save_uploaded_images(request_files):
-    """
-    Lưu 1 hoặc nhiều file ảnh từ các key 'hinh_anh' hoặc 'hinh_anh[]'
-    Trả về list path tương đối (vd: 'sanpham/abc.jpg')
-    """
     urls = []
     fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "sanpham"))
 
-    # Chấp nhận 'hinh_anh' (single) và/hoặc 'hinh_anh[]' (multiple)
     keys = []
     if "hinh_anh" in request_files:
         keys.append("hinh_anh")
@@ -65,7 +59,6 @@ def _save_uploaded_images(request_files):
 def products_list(request):
     """
     GET /api/products/?q=&page=&page_size=
-    Trả về: items (id, ten_san_pham, mo_ta, gia, hinh_anh, danh_muc_id), total, page, page_size
     """
     q = (request.GET.get("q") or "").strip()
     page = max(_to_int(request.GET.get("page", 1), 1), 1)
@@ -88,6 +81,7 @@ def products_list(request):
                 "gia": 1,
                 "hinh_anh": 1,
                 "danh_muc_id": 1,
+                "so_luong_ton": 1,  # <-- THÊM
             },
         )
         .sort("ten_san_pham", 1)
@@ -105,6 +99,7 @@ def products_list(request):
                 "gia": sp.get("gia", 0),
                 "hinh_anh": sp.get("hinh_anh", []),
                 "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
+                "so_luong_ton": int(sp.get("so_luong_ton", 0)),  # <-- THÊM
             }
         )
 
@@ -125,15 +120,15 @@ def products_create(request):
     """
     POST /api/products/
     - Hỗ trợ multipart/form-data (upload 1 hoặc nhiều ảnh) và JSON.
-    - multipart: các field: ten_san_pham, mo_ta, gia, danh_muc_id, hinh_anh (file) hoặc hinh_anh[] (nhiều file)
-    - json: {"ten_san_pham": "...", "mo_ta": "...", "gia": 0, "hinh_anh": ["path1", ...], "danh_muc_id": "..."}
     """
+
     # ---- multipart/form-data ----
     if (request.content_type or "").startswith("multipart/form-data"):
         ten = (request.POST.get("ten_san_pham") or "").strip()
         mo_ta = (request.POST.get("mo_ta") or "").strip()
         gia = _to_int(request.POST.get("gia"), 0)
         danh_muc_id = request.POST.get("danh_muc_id")
+        so_luong_ton = _to_int(request.POST.get("so_luong_ton"), 0)  # <-- THÊM
 
         if not ten:
             return JsonResponse({"error": "Thiếu ten_san_pham"}, status=400)
@@ -145,6 +140,7 @@ def products_create(request):
             "mo_ta": mo_ta,
             "gia": gia,
             "hinh_anh": hinh_anh_urls,
+            "so_luong_ton": max(0, so_luong_ton),  # <-- THÊM
         }
 
         if danh_muc_id:
@@ -155,7 +151,15 @@ def products_create(request):
 
         res = san_pham.insert_one(doc)
         return JsonResponse(
-            {"id": str(res.inserted_id), "ten_san_pham": ten, "gia": gia, "mo_ta": mo_ta, "hinh_anh": hinh_anh_urls},
+            {
+                "id": str(res.inserted_id),
+                "ten_san_pham": ten,
+                "gia": gia,
+                "mo_ta": mo_ta,
+                "hinh_anh": hinh_anh_urls,
+                "danh_muc_id": str(doc.get("danh_muc_id")) if doc.get("danh_muc_id") else None,
+                "so_luong_ton": doc["so_luong_ton"],  # <-- THÊM
+            },
             status=201,
         )
 
@@ -174,6 +178,7 @@ def products_create(request):
     gia = _to_int(body.get("gia"), 0)
     hinh_anh = body.get("hinh_anh") or []
     danh_muc_id = body.get("danh_muc_id")
+    so_luong_ton = max(0, _to_int(body.get("so_luong_ton"), 0))  # <-- THÊM
 
     if not ten:
         return JsonResponse({"error": "Thiếu ten_san_pham"}, status=400)
@@ -183,6 +188,7 @@ def products_create(request):
         "mo_ta": mo_ta,
         "gia": gia,
         "hinh_anh": hinh_anh,
+        "so_luong_ton": so_luong_ton,  # <-- THÊM
     }
 
     if danh_muc_id:
@@ -201,6 +207,7 @@ def products_create(request):
             "gia": created.get("gia", 0),
             "hinh_anh": created.get("hinh_anh", []),
             "danh_muc_id": str(created["danh_muc_id"]) if created.get("danh_muc_id") else None,
+            "so_luong_ton": int(created.get("so_luong_ton", 0)),  # <-- THÊM
         },
         status=201,
     )
@@ -232,12 +239,12 @@ def product_detail(request, id):
                 "gia": sp.get("gia", 0),
                 "hinh_anh": sp.get("hinh_anh", []),
                 "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
+                "so_luong_ton": int(sp.get("so_luong_ton", 0)),  # <-- THÊM
             }
         )
 
     # ----- POST (multipart override to PUT) -----
     if request.method == "POST" and (request.POST.get("_method") or "").upper() == "PUT":
-        # Chỉ chấp nhận multipart/form-data
         if not (request.content_type or "").startswith("multipart/form-data"):
             return JsonResponse({"error": "multipart/form-data required"}, status=415)
 
@@ -262,13 +269,17 @@ def product_detail(request, id):
                 return JsonResponse({"error": "gia phải là số"}, status=400)
             update["gia"] = gia
 
-        # Ảnh: tổng hợp từ file upload + text tùy chọn
+        # so_luong_ton (multipart)
+        if "so_luong_ton" in request.POST:
+            slt = _to_int(request.POST.get("so_luong_ton"), None)
+            if slt is None or slt < 0:
+                return JsonResponse({"error": "so_luong_ton phải là số >= 0"}, status=400)
+            update["so_luong_ton"] = slt  # <-- THÊM
+
         new_imgs = _save_uploaded_images(request.FILES)
         text_img = (request.POST.get("hinh_anh_text") or "").strip()
         if text_img:
             new_imgs.append(text_img)
-
-        # Nếu có cung cấp ảnh (file/text) => thay thế toàn bộ list; nếu không đụng tới => giữ nguyên
         if new_imgs:
             update["hinh_anh"] = new_imgs
 
@@ -298,6 +309,7 @@ def product_detail(request, id):
                 "gia": sp.get("gia", 0),
                 "hinh_anh": sp.get("hinh_anh", []),
                 "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
+                "so_luong_ton": int(sp.get("so_luong_ton", 0)),  # <-- THÊM
             }
         )
 
@@ -331,6 +343,11 @@ def product_detail(request, id):
                 update["danh_muc_id"] = dm_oid
             else:
                 update["danh_muc_id"] = None
+        if "so_luong_ton" in body:  # <-- THÊM
+            slt = _to_int(body.get("so_luong_ton"), None)
+            if slt is None or slt < 0:
+                return JsonResponse({"error": "so_luong_ton phải là số >= 0"}, status=400)
+            update["so_luong_ton"] = slt
 
         if not update:
             return JsonResponse({"error": "No fields to update"}, status=400)
@@ -348,6 +365,7 @@ def product_detail(request, id):
                 "gia": sp.get("gia", 0),
                 "hinh_anh": sp.get("hinh_anh", []),
                 "danh_muc_id": str(sp["danh_muc_id"]) if sp.get("danh_muc_id") else None,
+                "so_luong_ton": int(sp.get("so_luong_ton", 0)),  # <-- THÊM
             }
         )
 

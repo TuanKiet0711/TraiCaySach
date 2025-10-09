@@ -126,16 +126,18 @@
   // ====== Xóa ======
   $('btnDelete').addEventListener('click', async ()=>{
     if(!confirm('Xóa sản phẩm này? Hành động không thể hoàn tác.')) return;
-    const r = await fetch(`/api/products/${id}/`, {
-      method: 'DELETE',
-      headers: { 'X-CSRFToken': CSRF }
-    });
-    if(r.ok){
-      window.location = "{% url 'shop:admin_products' %}";
-    } else {
-      const err = await r.json().catch(()=>({}));
-      alert(err.error || 'Không thể xóa');
-    }
+    // DELETE page JS (products_delete.html)
+const r = await fetch(`/api/products/${id}/`, {
+  method: 'DELETE',
+  headers: { 'X-CSRFToken': CSRF }
+});
+if (r.status === 204) {
+  window.location = "{% url 'shop:admin_products' %}?ok=deleted";
+} else {
+  const err = await r.json().catch(() => ({}));
+  alert(err.error || 'Xóa thất bại');
+}
+
   });
 })();
 </script>
