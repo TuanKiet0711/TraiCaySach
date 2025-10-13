@@ -10,61 +10,72 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root {
-      --brand: #2e7d32;    /* xanh lá đậm */
-      --brand-2: #1e5f22;  /* xanh lá tối */
-      --muted: #eef7f0;    /* nền nhạt */
+    :root{
+      --brand:#ff6f00;    /* cam chủ đạo */
+      --brand-2:#e65100;  /* cam đậm */
+      --muted:#fff3e0;    /* nền nhạt cam */
     }
-    body { background: #fff; min-height: 100vh; }
-    .admin-shell { display: flex; min-height: 100vh; width: 100%; }
+    body{background:#fff;min-height:100vh;}
+    .admin-shell{display:flex;min-height:100vh;width:100%;}
 
     /* SIDEBAR */
-    .admin-sidebar {
-      width: 260px; background: var(--brand); color: #fff;
-      padding: 16px 14px; position: sticky; top: 0; height: 100vh;
+    .admin-sidebar{
+      width:260px;color:#fff;padding:16px 14px;
+      position:sticky;top:0;height:100vh;
+      background:linear-gradient(180deg,var(--brand)0%,var(--brand-2)100%);
+      box-shadow:0 0 0 1px rgba(0,0,0,.02) inset;
     }
-    .admin-brand {
-      font-weight: 800; font-size: 22px;
-      margin: 2px 8px 14px; letter-spacing: .2px;
+    .admin-brand{
+      font-weight:800;font-size:22px;margin:2px 8px 14px;letter-spacing:.2px;
     }
-    .admin-menu .btn {
-      width: 100%; text-align: left; color: #e8ffe9;
-      background: transparent; border: none; padding: 10px 12px;
-      border-radius: 10px; margin-bottom: 8px; font-weight: 600;
+    .admin-menu a{
+      display:block;
+      width:100%;
+      text-align:left;
+      color:#fff;
+      background:transparent;
+      border:none;
+      padding:10px 12px;
+      border-radius:10px;
+      margin-bottom:8px;
+      font-weight:600;
+      text-decoration:none;
+      cursor:pointer;
+      transition:background .2s ease;
     }
-    .admin-menu .btn:hover { background: rgba(255,255,255,.12); }
-    .admin-menu .btn.active { background: #fff; color: var(--brand); }
+    .admin-menu a:hover{background:rgba(255,255,255,.12);}
+    .admin-menu a.active{
+      background:#fff;
+      color:var(--brand-2);
+      box-shadow:0 2px 8px rgba(0,0,0,.06);
+    }
+    .admin-menu a:active,.admin-menu a:focus{
+      outline:none;
+      background:rgba(255,255,255,.25);
+    }
 
     /* MAIN */
-    .admin-main {
-      flex: 1;
-      background: linear-gradient(180deg, #fff 0, #fff 60%, var(--muted) 60%, var(--muted) 100%);
+    .admin-main{
+      flex:1;
+      background:linear-gradient(180deg,#fff 0,#fff 60%,var(--muted)60%,var(--muted)100%);
     }
-    .admin-top {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 28px;
+    .admin-top{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:18px 28px;border-bottom:1px solid rgba(0,0,0,.04);
     }
-    .page-title { font-weight: 800; font-size: 34px; margin: 0; }
-    .muted-pill {
-      font-size: 12px; color: #3e7a42; background: #eaf6ec;
-      border-radius: 999px; padding: 4px 10px;
+    .page-title{font-weight:800;font-size:34px;margin:0;}
+    .muted-pill{
+      font-size:12px;color:#9a4500;background:#ffe0b2;
+      border-radius:999px;padding:4px 10px;
     }
 
     /* TOAST */
-    #toast-success {
-      position: fixed;
-      top: 12px; right: 12px;
-      z-index: 1060;
-      display: none;
+    #toast-success{
+      position:fixed;top:12px;right:12px;z-index:1060;display:none;
     }
-    #toast-success .toast {
-      background: var(--brand);
-      color: #fff;
-      border: none;
-      border-radius: 14px;
-      min-width: 240px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.15);
-      font-weight: 600;
+    #toast-success .toast{
+      background:var(--brand);color:#fff;border:none;border-radius:14px;
+      min-width:240px;box-shadow:0 4px 16px rgba(0,0,0,.15);font-weight:600;
     }
   </style>
 
@@ -75,21 +86,26 @@
 
   <!-- SIDEBAR -->
   <aside class="admin-sidebar">
-    <div class="admin-brand">Quản trị</div>
+    <div class="admin-brand"><i class="bi bi-brightness-high-fill me-1"></i> Quản trị</div>
     <div class="admin-menu">
-      <a class="btn {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}"
-         href="{% url 'shop:admin_dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Bảng điều khiển</a>
-      <a class="btn {% if request.resolver_match.url_name == 'admin_products' %}active{% endif %}"
-         href="{% url 'shop:admin_products' %}"><i class="bi bi-basket3 me-2"></i>Sản phẩm</a>
-      <a class="btn {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}"
-         href="{% url 'shop:admin_categories' %}"><i class="bi bi-columns-gap me-2"></i>Danh mục</a>
-      <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}"
-         href="{% url 'shop:admin_orders' %}"><i class="bi bi-receipt me-2"></i>Đơn hàng</a>
-      <a class="btn {% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}"
-         href="{% url 'shop:admin_accounts' %}"><i class="bi bi-people me-2"></i>Tài khoản</a>
+      <a href="{% url 'shop:admin_dashboard' %}" class="{% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2 me-2"></i> Bảng điều khiển
+      </a>
+      <a href="{% url 'shop:admin_products' %}" class="{% if request.resolver_match.url_name == 'admin_products' %}active{% endif %}">
+        <i class="bi bi-basket3 me-2"></i> Sản phẩm
+      </a>
+      <a href="{% url 'shop:admin_categories' %}" class="{% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}">
+        <i class="bi bi-columns-gap me-2"></i> Danh mục
+      </a>
+      <a href="{% url 'shop:admin_orders' %}" class="{% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}">
+        <i class="bi bi-receipt me-2"></i> Đơn hàng
+      </a>
+      <a href="{% url 'shop:admin_accounts' %}" class="{% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}">
+        <i class="bi bi-people me-2"></i> Tài khoản
+      </a>
 
       <hr class="border-light">
-      <a class="btn" href="{% url 'shop:home' %}"><i class="bi bi-house me-2"></i>Về trang khách</a>
+      <a href="{% url 'shop:home' %}"><i class="bi bi-house me-2"></i> Về trang khách</a>
     </div>
   </aside>
 
@@ -108,18 +124,15 @@
     </div>
 
     <div class="container pb-5">
-
-      <!-- Django messages (hiển thị qua toast) -->
       {% if messages %}
         <script>
-          window.addEventListener('DOMContentLoaded', function(){
+          window.addEventListener('DOMContentLoaded',function(){
             {% for message in messages %}
               showToast('{{ message|escapejs }}')
             {% endfor %}
           });
         </script>
       {% endif %}
-
       {% block content %}{% endblock %}
     </div>
   </main>
@@ -138,18 +151,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
   // Hiển thị toast
-  window.showToast = function (msg = 'Thành công', duration = 2000) {
-    const toast = document.getElementById('toast-success');
-    const msgBox = document.getElementById('toast-msg');
-    msgBox.textContent = msg;
-    toast.style.display = 'block';
-    setTimeout(() => { toast.style.display = 'none'; }, duration);
+  window.showToast = function(msg='Thành công',duration=2000){
+    const toast=document.getElementById('toast-success');
+    const msgBox=document.getElementById('toast-msg');
+    msgBox.textContent=msg;
+    toast.style.display='block';
+    setTimeout(()=>{toast.style.display='none';},duration);
   };
-  window.hideToast = function () {
-    document.getElementById('toast-success').style.display = 'none';
+  window.hideToast=function(){
+    document.getElementById('toast-success').style.display='none';
   };
 </script>
 

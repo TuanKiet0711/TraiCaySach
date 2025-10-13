@@ -13,61 +13,84 @@
     html, body { height: 100%; margin: 0; }
     body { display: flex; flex-direction: column; }
     main.container { flex: 1; }
+
+    /* ---- Màu cam chủ đạo cho header & footer ---- */
+    .navbar-orange {
+      background: linear-gradient(90deg, #ff6f00, #ff9800);
+    }
+    .footer-orange {
+      background: linear-gradient(180deg, #ff8f00, #ff6f00);
+    }
+    .navbar-brand, .navbar-nav .nav-link { color: #fff !important; }
+    .navbar-nav .nav-link:hover { opacity: .9; }
+    #cartCountBadge, #ordersBadge { font-size: .65rem; }
   </style>
 </head>
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #198754;">
+  <nav class="navbar navbar-expand-lg navbar-dark navbar-orange">
     <div class="container">
-      <a class="navbar-brand text-success fw-bold" href="{% url 'shop:home' %}">Shop Xanh</a>
+      <a class="navbar-brand fw-bold" href="{% url 'shop:home' %}">
+        <i class="bi bi-brightness-high-fill me-1"></i> Trái Cây Sạch
+      </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav me-auto">
-          <li class="nav-item"><a class="nav-link" href="{% url 'shop:home' %}">Trang chủ</a></li>
-          <li class="nav-item"><a class="nav-link" href="{% url 'shop:sanpham_list' %}">Sản phẩm</a></li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'shop:home' %}">
+              <i class="bi bi-house-door me-1"></i> Trang chủ
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'shop:sanpham_list' %}">
+              <i class="bi bi-basket me-1"></i> Sản phẩm
+            </a>
+          </li>
           {% if request.session.user_id and request.session.user_role|lower == 'admin' %}
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'shop:admin_dashboard' %}"><i class="bi bi-speedometer2"></i> Admin Panel</a>
-            </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'shop:admin_dashboard' %}">
+              <i class="bi bi-speedometer2 me-1"></i> Admin Panel
+            </a>
+          </li>
           {% endif %}
         </ul>
 
         <ul class="navbar-nav">
           {% if request.session.user_id %}
-            <!-- Tài khoản -->
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                <i class="bi bi-person-circle"></i>
-                {{ request.session.user_name|default:"Tài khoản" }}
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="{% url 'shop:my_orders_page' %}">Đơn hàng của tôi</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a id="btnLogout" class="dropdown-item" href="#">Đăng xuất</a></li>
-              </ul>
-            </li>
+          <!-- Tài khoản -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle me-1"></i>
+              {{ request.session.user_name|default:"Tài khoản" }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% url 'shop:my_orders_page' %}"><i class="bi bi-receipt-cutoff me-1"></i> Đơn hàng của tôi</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a id="btnLogout" class="dropdown-item" href="#"><i class="bi bi-box-arrow-right me-1"></i> Đăng xuất</a></li>
+            </ul>
+          </li>
 
-            <!-- ĐƠN HÀNG (badge + dropdown) -->
-            <li class="nav-item dropdown" id="ordersDropdownRoot">
-              <a class="nav-link position-relative" href="#" id="ordersMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-receipt-cutoff"></i> Đơn hàng
-                <span id="ordersBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success d-none">0</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end p-0" style="min-width:340px;max-height:380px;overflow:auto;">
-                <div id="ordersList" class="list-group list-group-flush small">
-                  <div class="p-3 text-center text-muted">Đang tải…</div>
-                </div>
-                <div class="p-2 text-center border-top">
-                  <a href="{% url 'shop:my_orders_page' %}" class="small">Xem tất cả đơn</a>
-                </div>
+          <!-- Đơn hàng (badge + dropdown) -->
+          <li class="nav-item dropdown" id="ordersDropdownRoot">
+            <a class="nav-link position-relative" href="#" id="ordersMenuLink" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-receipt-cutoff"></i> Đơn hàng
+              <span id="ordersBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success d-none">0</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end p-0" style="min-width:340px;max-height:380px;overflow:auto;">
+              <div id="ordersList" class="list-group list-group-flush small">
+                <div class="p-3 text-center text-muted">Đang tải…</div>
               </div>
-            </li>
+              <div class="p-2 text-center border-top">
+                <a href="{% url 'shop:my_orders_page' %}" class="small">Xem tất cả đơn</a>
+              </div>
+            </div>
+          </li>
           {% else %}
-            <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_login' %}">Đăng nhập</a></li>
-            <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_register' %}">Đăng ký</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_login' %}"><i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'shop:shop_register' %}"><i class="bi bi-pencil-square me-1"></i> Đăng ký</a></li>
           {% endif %}
 
           <!-- Giỏ hàng -->
@@ -89,60 +112,51 @@
   </main>
 
   <!-- Footer -->
-<footer class="text-white mt-auto" style="background:#198754;">
-  <div class="container py-4">
-    <div class="row g-3">
-      
-      <!-- Cột 1: Giới thiệu -->
-      <div class="col-md-3">
-        <h5 class="fw-bold">Trái Cây Sạch</h5>
-        <p class="small mb-0">
-          Cung cấp trái cây sạch, an toàn cho sức khoẻ. Luôn tươi mới và có nguồn gốc rõ ràng từ các nhà vườn uy tín.
-        </p>
-      </div>
-
-      <!-- Cột 2: Liên hệ -->
-      <div class="col-md-3">
-        <h5 class="fw-bold">Liên hệ</h5>
-        <ul class="list-unstyled mb-0 small">
-          <li><i class="bi bi-geo-alt"></i> 236 Đường Quang Trung, Quận Gò Vấp, TP.HCM</li>
-          <li><i class="bi bi-telephone"></i> 0909 123 456</li>
-          <li><i class="bi bi-envelope"></i> support@traicaysach.vn</li>
-          <li><i class="bi bi-clock"></i> 7:00 - 21:00 (T2 - CN)</li>
-        </ul>
-      </div>
-
-      <!-- Cột 3: Hỗ trợ khách hàng -->
-      <div class="col-md-3">
-        <h5 class="fw-bold">Hỗ trợ khách hàng</h5>
-        <ul class="list-unstyled mb-0 small">
-          <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-question-circle"></i> Câu hỏi thường gặp</a></li>
-          <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-truck"></i> Chính sách giao hàng</a></li>
-          <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-arrow-repeat"></i> Đổi trả & hoàn tiền</a></li>
-          <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-lock"></i> Bảo mật thông tin</a></li>
-        </ul>
-      </div>
-
-      <!-- Cột 4: Kết nối mạng xã hội -->
-      <div class="col-md-3">
-        <h5 class="fw-bold">Kết nối với chúng tôi</h5>
-        <div class="d-flex gap-3 fs-4">
-          <a href="#" class="text-white"><i class="bi bi-facebook"></i></a>
-          <a href="#" class="text-white"><i class="bi bi-instagram"></i></a>
-          <a href="#" class="text-white"><i class="bi bi-youtube"></i></a>
-          <a href="#" class="text-white"><i class="bi bi-envelope"></i></a>
+  <footer class="text-white mt-auto footer-orange">
+    <div class="container py-4">
+      <div class="row g-3">
+        <!-- Cột 1 -->
+        <div class="col-md-3">
+          <h5 class="fw-bold"><i class="bi bi-brightness-high-fill me-1"></i> Trái Cây Sạch</h5>
+          <p class="small mb-0">
+            Cung cấp trái cây sạch, an toàn cho sức khoẻ. Tươi ngon mỗi ngày, nguồn gốc rõ ràng.
+          </p>
         </div>
-        <div class="mt-3 small">
-          
+        <!-- Cột 2 -->
+        <div class="col-md-3">
+          <h5 class="fw-bold">Liên hệ</h5>
+          <ul class="list-unstyled mb-0 small">
+            <li><i class="bi bi-geo-alt me-1"></i> 236 Quang Trung, Gò Vấp, TP.HCM</li>
+            <li><i class="bi bi-telephone me-1"></i> 0909 123 456</li>
+            <li><i class="bi bi-envelope me-1"></i> support@traicaysach.vn</li>
+            <li><i class="bi bi-clock me-1"></i> 7:00 - 21:00 (T2 - CN)</li>
+          </ul>
+        </div>
+        <!-- Cột 3 -->
+        <div class="col-md-3">
+          <h5 class="fw-bold">Hỗ trợ khách hàng</h5>
+          <ul class="list-unstyled mb-0 small">
+            <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-question-circle me-1"></i> Câu hỏi thường gặp</a></li>
+            <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-truck me-1"></i> Chính sách giao hàng</a></li>
+            <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-arrow-repeat me-1"></i> Đổi trả & hoàn tiền</a></li>
+            <li><a href="#" class="text-white text-decoration-none"><i class="bi bi-lock me-1"></i> Bảo mật thông tin</a></li>
+          </ul>
+        </div>
+        <!-- Cột 4 -->
+        <div class="col-md-3">
+          <h5 class="fw-bold">Kết nối</h5>
+          <div class="d-flex gap-3 fs-4">
+            <a href="#" class="text-white"><i class="bi bi-facebook"></i></a>
+            <a href="#" class="text-white"><i class="bi bi-instagram"></i></a>
+            <a href="#" class="text-white"><i class="bi bi-youtube"></i></a>
+            <a href="#" class="text-white"><i class="bi bi-envelope"></i></a>
+          </div>
         </div>
       </div>
-
+      <hr class="border-light my-3">
+      <p class="text-center small mb-0">&copy; 2025 Trái Cây Sạch 🍊 All rights reserved.</p>
     </div>
-    <hr class="border-light my-3">
-    <p class="text-center small mb-0">&copy; 2025 Trái Cây Sạch. All rights reserved.</p>
-  </div>
-</footer>
-
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -173,12 +187,11 @@
       async function loadCartCount() {
         try {
           const res = await fetch('/api/cart');
-          if (!res.ok) { cartBadge.classList.add('d-none'); return; }
+          if (!res.ok) return cartBadge.classList.add('d-none');
           const data = await res.json();
           const count = data.count || (data.items ? data.items.length : 0);
-          if (count > 0) { cartBadge.textContent = count; cartBadge.classList.remove('d-none'); }
-          else { cartBadge.classList.add('d-none'); }
-        } catch (e) { cartBadge.classList.add('d-none'); }
+          count > 0 ? (cartBadge.textContent = count, cartBadge.classList.remove('d-none')) : cartBadge.classList.add('d-none');
+        } catch { cartBadge.classList.add('d-none'); }
       }
       window.updateCartBadge = loadCartCount;
       loadCartCount();
@@ -189,64 +202,36 @@
       const ordersBtn   = document.getElementById('ordersMenuLink');
 
       async function refreshOrdersCount(){
-        if(!ordersBadge) return;
         try{
-          // Gọi API đếm TẤT CẢ đơn hàng của user (paid=0 để bỏ lọc)
           const r = await fetch('/api/my-orders/count/?paid=0', {credentials:'same-origin'});
-          if(!r.ok) throw new Error('Lỗi mạng');
+          if(!r.ok) throw 0;
           const d = await r.json();
           const c = Number(d.count || 0);
-          if(c > 0){
-            ordersBadge.textContent = c > 99 ? '99+' : String(c);
-            ordersBadge.classList.remove('d-none');
-          } else {
-            ordersBadge.classList.add('d-none');
-          }
-        } catch(e){
-          ordersBadge.classList.add('d-none');
-        }
+          c>0 ? (ordersBadge.textContent = c>99?'99+':String(c), ordersBadge.classList.remove('d-none')) : ordersBadge.classList.add('d-none');
+        }catch{ ordersBadge.classList.add('d-none'); }
       }
 
-
       async function loadOrdersList(){
-        if(!ordersList) return;
         ordersList.innerHTML = '<div class="p-3 text-center text-muted">Đang tải…</div>';
         try{
           const r = await fetch('/api/my-orders/?paid=1&limit=5', {credentials:'same-origin'});
-          if(!r.ok){ ordersList.innerHTML = '<div class="p-3 text-center text-danger">Lỗi tải dữ liệu</div>'; return; }
-          const d = await r.json();
-          const items = Array.isArray(d.items) ? d.items : [];
-          if(items.length === 0){
-            ordersList.innerHTML = '<div class="p-3 text-center text-muted">Chưa có đơn đã thanh toán</div>';
-            return;
-          }
+          if(!r.ok) throw 0;
+          const d = await r.json(), items = Array.isArray(d.items)?d.items:[];
+          if(!items.length) return ordersList.innerHTML='<div class="p-3 text-center text-muted">Chưa có đơn đã thanh toán</div>';
           ordersList.innerHTML = items.map(o=>{
-            const date = (o.ngay_tao||'').replace('T',' ').slice(0,16);
-            const name = o.san_pham_ten || 'Sản phẩm';
+            const date=(o.ngay_tao||'').replace('T',' ').slice(0,16);
             return `
               <a class="list-group-item list-group-item-action" href="{% url 'shop:my_orders_page' %}">
-                <div class="d-flex w-100 justify-content-between">
-                  <div class="fw-semibold">${name}</div>
-                  <small class="text-muted">${date}</small>
-                </div>
-                <div class="d-flex justify-content-between">
-                  <div class="text-muted">x${o.so_luong} · ${money(o.don_gia)}</div>
-                  <div class="fw-semibold">${money(o.tong_tien)}</div>
-                </div>
+                <div class="d-flex w-100 justify-content-between"><div class="fw-semibold">${o.san_pham_ten||'Sản phẩm'}</div><small class="text-muted">${date}</small></div>
+                <div class="d-flex justify-content-between"><div class="text-muted">x${o.so_luong} · ${money(o.don_gia)}</div><div class="fw-semibold">${money(o.tong_tien)}</div></div>
                 <div class="mt-1">${statusBadge(o.trang_thai)}</div>
-              </a>
-            `;
+              </a>`;
           }).join('');
-        }catch(e){
-          ordersList.innerHTML = '<div class="p-3 text-center text-danger">Lỗi tải dữ liệu</div>';
-        }
+        }catch{ ordersList.innerHTML='<div class="p-3 text-center text-danger">Lỗi tải dữ liệu</div>'; }
       }
 
-      // Lần đầu + 60s/lần cập nhật badge
       refreshOrdersCount();
       setInterval(refreshOrdersCount, 60000);
-
-      // Mở dropdown mới nạp danh sách
       if (ordersBtn) ordersBtn.addEventListener('click', loadOrdersList);
     });
   </script>

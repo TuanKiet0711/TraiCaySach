@@ -23,11 +23,19 @@
 
             <form id="checkoutForm" class="row g-3" autocomplete="off" novalidate>
               <div class="col-md-6">
-                <label class="form-label">Họ và tên</label>
-                <input name="ho_ten" type="text" class="form-control" required>
+                <label class="form-label" for="inputName">Họ và tên</label>
+                <input
+                  name="ho_ten"
+                  id="inputName"
+                  type="text"
+                  class="form-control"
+                  placeholder="Nhập họ và tên"
+                  autocomplete="name"
+                  required
+                >
               </div>
               <div class="col-md-6">
-                <label class="form-label">Số điện thoại</label>
+                <label class="form-label" for="inputPhone">Số điện thoại</label>
                 <input
                   name="sdt"
                   id="inputPhone"
@@ -37,21 +45,36 @@
                   inputmode="numeric"
                   pattern="^[0-9]{8,15}$"
                   maxlength="15"
-                  placeholder=""
+                  placeholder="Nhập số điện thoại"
+                  title="Chỉ nhập số, từ 8 đến 15 ký tự"
                   aria-describedby="phoneHelp"
+                  autocomplete="tel"
                 >
-                
               </div>
               <div class="col-12">
-                <label class="form-label">Địa chỉ</label>
-                <input name="dia_chi" type="text" class="form-control" required>
+                <label class="form-label" for="inputAddress">Địa chỉ</label>
+                <input
+                  name="dia_chi"
+                  id="inputAddress"
+                  type="text"
+                  class="form-control"
+                  placeholder="Nhập địa chỉ"
+                  autocomplete="street-address"
+                  required
+                >
               </div>
               <div class="col-12">
-                <label class="form-label">Ghi chú</label>
-                <textarea name="ghi_chu" class="form-control" rows="2"></textarea>
+                <label class="form-label" for="inputNote">Ghi chú</label>
+                <textarea
+                  name="ghi_chu"
+                  id="inputNote"
+                  class="form-control"
+                  rows="2"
+                  placeholder="Nhập ghi chú (nếu có)"
+                ></textarea>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Phương thức thanh toán</label>
+                <label class="form-label" for="paymentSelect">Phương thức thanh toán</label>
                 <select name="phuong_thuc_thanh_toan" id="paymentSelect" class="form-select">
                   <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
                   <option value="chuyen_khoan">Chuyển khoản</option>
@@ -68,33 +91,33 @@
 
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label class="form-label mb-1">Ngân hàng</label>
+                      <label class="form-label mb-1" for="bankName">Ngân hàng</label>
                       <div class="input-group">
-                        <input type="text" class="form-control" id="bankName" value="Vietcombank (VCB)" readonly>
+                        <input type="text" class="form-control" id="bankName" value="Tiên Phong Bank" readonly>
                         <button class="btn btn-outline-success" type="button" data-copy="#bankName" aria-label="Copy ngân hàng"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label mb-1">Số tài khoản</label>
+                      <label class="form-label mb-1" for="bankNo">Số tài khoản</label>
                       <div class="input-group">
-                        <input type="text" class="form-control" id="bankNo" value="0123456789" readonly>
+                        <input type="text" class="form-control" id="bankNo" value="89756888888" readonly>
                         <button class="btn btn-outline-success" type="button" data-copy="#bankNo" aria-label="Copy số tài khoản"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label mb-1">Chủ tài khoản</label>
+                      <label class="form-label mb-1" for="bankOwner">Chủ tài khoản</label>
                       <div class="input-group">
-                        <input type="text" class="form-control" id="bankOwner" value="CÔNG TY TNHH ABC" readonly>
+                        <input type="text" class="form-control" id="bankOwner" value="Lâm Diệu Kiệt" readonly>
                         <button class="btn btn-outline-success" type="button" data-copy="#bankOwner" aria-label="Copy chủ tài khoản"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label mb-1">Nội dung chuyển khoản</label>
+                      <label class="form-label mb-1" for="bankMemo">Nội dung chuyển khoản</label>
                       <div class="input-group">
-                        <input type="text" class="form-control" id="bankMemo" value="Thanh toan don hang - SDT: " readonly>
+                        <input type="text" class="form-control" id="bankMemo" value="Thanh toan don hang - SDT: 0xxx " readonly>
                         <button class="btn btn-outline-success" type="button" data-copy="#bankMemo" aria-label="Copy nội dung"><i class="bi bi-clipboard"></i></button>
                       </div>
-                      <div class="form-text">* Nhập <strong>SĐT</strong> của bạn ở cuối nội dung để đối soát nhanh hơn. Trường này sẽ tự gợi ý theo SĐT bạn nhập.</div>
+                     
                     </div>
                   </div>
 
@@ -177,7 +200,6 @@
   const inputPhone  = document.getElementById('inputPhone');
 
   // ====== CHỈ CHO NHẬP SỐ 0–9 CHO SĐT ======
-  // Làm sạch mọi ký tự không phải số khi gõ / dán / kéo-thả
   const digitsOnly = (s) => (s || '').replace(/\D+/g, '').slice(0, 15);
   function sanitizePhone() {
     const cur = inputPhone.value;
@@ -195,7 +217,6 @@
     const text = e.dataTransfer.getData('text');
     inputPhone.value = digitsOnly(text);
   });
-  // Ngăn nhập ký tự không phải số từ bàn phím (trừ phím điều hướng / control)
   inputPhone.addEventListener('keypress', (e) => {
     const isDigit = /[0-9]/.test(e.key);
     const isCtrl = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End","Enter"].includes(e.key);
