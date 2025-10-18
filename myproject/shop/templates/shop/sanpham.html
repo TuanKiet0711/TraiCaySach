@@ -6,48 +6,24 @@
 
 {% block content %}
 <style>
-  /* Sát phía trên */
   .page-products{padding-top:.5rem;padding-bottom:1.5rem}
   .page-products h2{margin:0 0 1rem 0}
-
-  /* Thanh tìm kiếm ngắn gọn, ở giữa */
   .search-wrap{max-width:920px;margin:0 auto 1rem auto}
-  .search-bar{
-    display:flex;gap:.5rem;align-items:center;
-    padding:.5rem .75rem;border-radius:2rem;
-    box-shadow:0 2px 6px rgba(0,0,0,.05);background:#fff
-  }
+  .search-bar{display:flex;gap:.5rem;align-items:center;padding:.5rem .75rem;border-radius:2rem;box-shadow:0 2px 6px rgba(0,0,0,.05);background:#fff}
   .search-bar input{border:none;outline:none;font-size:.95rem;background:transparent}
   .search-bar .sep{width:1px;height:26px;background:#eaeaea}
   .search-bar .input-text{flex:1;min-width:140px}
   .search-bar .input-number{width:120px;text-align:right}
-
-  /* Danh mục: dropdown nhỏ gọn */
   .cat-wrap{position:relative;display:inline-flex;align-items:center}
-  .cat-btn{
-    display:inline-flex;align-items:center;gap:.35rem;
-    border:none;background:transparent;cursor:pointer;
-    padding:.25rem .5rem;border-radius:16px;line-height:1
-  }
+  .cat-btn{display:inline-flex;align-items:center;gap:.35rem;border:none;background:transparent;cursor:pointer;padding:.25rem .5rem;border-radius:16px;line-height:1}
   .cat-btn .caret{font-size:.8rem;color:#2e7d32}
-  .cat-menu{
-    position:absolute;top:calc(100% + .35rem);left:0;z-index:1000;
-    min-width:220px;max-width:320px;max-height:260px;overflow:auto;
-    background:#fff;border:1px solid #e9ecef;border-radius:.5rem;
-    box-shadow:0 8px 24px rgba(0,0,0,.08);padding:.25rem;display:none;
-  }
+  .cat-menu{position:absolute;top:calc(100% + .35rem);left:0;z-index:1000;min-width:220px;max-width:320px;max-height:260px;overflow:auto;background:#fff;border:1px solid #e9ecef;border-radius:.5rem;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:.25rem;display:none}
   .cat-menu.show{display:block}
   .cat-item{display:block;padding:.4rem .6rem;border-radius:.35rem;color:#212529;text-decoration:none}
   .cat-item:hover{background:#f5f8f5}
   .cat-item.active{background:#e8f5e9;color:#1b5e20;font-weight:600}
-
-  .btn-search{
-    background:linear-gradient(135deg,#2e7d32,#4caf50);
-    color:#fff;border:none;border-radius:2rem;padding:.4rem 1rem;font-weight:500
-  }
-  .btn-clear{
-    background:#f1f1f1;border:none;border-radius:2rem;padding:.4rem .9rem;font-size:.9rem
-  }
+  .btn-search{background:linear-gradient(135deg,#2e7d32,#4caf50);color:#fff;border:none;border-radius:2rem;padding:.4rem 1rem;font-weight:500}
+  .btn-clear{background:#f1f1f1;border:none;border-radius:2rem;padding:.4rem .9rem;font-size:.9rem}
 
   .product-card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);overflow:hidden;background:#fff;transition:.2s}
   .product-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
@@ -56,21 +32,10 @@
   .btn-buy-now{background:#2e7d32;color:#fff;border:none}
   .btn-buy-now:hover{background:#1b5e20}
   .btn-add-cart{border:1px dashed #2e7d32;color:#2e7d32}
-  .btn-buy-immediate{
-    background:#fff;color:#e53935;border:2px solid #e53935;font-weight:600;
-    display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;
-    padding:.5rem 1rem;transition:all .25s ease;font-size:.95rem;letter-spacing:.3px;cursor:pointer;
-  }
+  .btn-buy-immediate{background:#fff;color:#e53935;border:2px solid #e53935;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:999px;padding:.5rem 1rem;transition:all .25s ease;font-size:.95rem;letter-spacing:.3px;cursor:pointer}
   .btn-buy-immediate:hover{background:#e53935;color:#fff;transform:translateY(-2px);box-shadow:0 4px 12px rgba(229,57,53,.4)}
-
-  /* Toast */
-  #toast-success{
-    position:fixed;top:1rem;right:1rem;z-index:2147483647;
-    background:#2e7d32;color:#fff;padding:.75rem 1rem;border-radius:.5rem;
-    box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:.9rem;
-    opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s, transform .2s;
-  }
-  #toast-success.show{opacity:1;transform:translateY(0);}
+  #toast-success{position:fixed;top:1rem;right:1rem;z-index:2147483647;background:#2e7d32;color:#fff;padding:.75rem 1rem;border-radius:.5rem;box-shadow:0 4px 12px rgba(0,0,0,.2);font-size:.9rem;opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .2s, transform .2s}
+  #toast-success.show{opacity:1;transform:translateY(0)}
 </style>
 
 <div class="container page-products">
@@ -80,22 +45,15 @@
   <form id="filterForm" class="mb-3 search-wrap" method="get">
     <div class="search-bar">
       <i class="bi bi-search text-success"></i>
-
-      <!-- Từ khóa -->
       <input class="input-text" type="text" name="q" placeholder="Tìm sản phẩm..." value="{{ q }}">
-
       <span class="sep d-none d-md-inline"></span>
 
-      <!-- Danh mục: dropdown có scroll -->
       <div class="cat-wrap d-none d-md-inline">
-        <!-- giữ giá trị thực để submit -->
         <input type="hidden" name="cat" id="catHidden" value="{{ active_cat|default:'' }}">
-        <!-- nút hiển thị -->
         <button type="button" id="catBtn" class="cat-btn" aria-expanded="false" aria-haspopup="listbox" aria-controls="catMenu">
           <span id="catLabel" class="text-truncate" style="max-width:180px;">Tất cả danh mục</span>
           <span class="caret">▾</span>
         </button>
-        <!-- menu -->
         <div id="catMenu" class="cat-menu" role="listbox">
           <a href="#" class="cat-item {% if not active_cat %}active{% endif %}" data-id="">Tất cả danh mục</a>
           {% for c in categories %}
@@ -108,7 +66,6 @@
 
       <span class="sep d-none d-md-inline"></span>
 
-      <!-- Giá từ - đến (format dấu phẩy khi gõ) -->
       <div class="d-flex align-items-center gap-1">
         <span class="text-muted d-none d-md-inline">Giá:</span>
         <input class="input-number" type="text" inputmode="numeric" pattern="[0-9,]*" name="min" id="minPrice" placeholder="từ" value="{{ min|default_if_none:''|intcomma }}">
@@ -117,7 +74,6 @@
         <span class="text-muted d-none d-md-inline">VNĐ</span>
       </div>
 
-      <!-- giữ sort & page_size -->
       <input type="hidden" name="sort" value="{{ sort }}">
       <input type="hidden" name="page_size" value="{{ page_size }}">
 
@@ -148,10 +104,21 @@
           <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
           <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
           <div class="mt-auto d-flex flex-column gap-2">
-            <button type="button" class="btn btn-buy-immediate w-100 btn-buy-now-action"
-                    data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+            <!-- MUA NGAY: thêm data-price & data-img -->
+            <button type="button"
+                    class="btn btn-buy-immediate w-100 btn-buy-now-action"
+                    data-id="{{ sp.id }}"
+                    data-name="{{ sp.ten }}"
+                    data-price="{{ sp.gia }}"
+                    {% if sp.hinh_anh and sp.hinh_anh.0 %}
+                      data-img="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}"
+                    {% else %}
+                      data-img="{% static 'images/placeholder/produce.png' %}"
+                    {% endif %}
+            >
               <i class="bi bi-lightning-charge-fill"></i> Mua ngay
             </button>
+
             <button type="button" class="btn btn-add-cart w-100"
                     data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
               <i class="bi bi-bag-plus"></i> Thêm vào giỏ
@@ -169,7 +136,6 @@
     {% endfor %}
   </div>
 
-  <!-- Phân trang (giữ tham số) -->
   {% if pages > 1 %}
   {% with qs="q="|add:q|urlencode|add:"&cat="|add:active_cat|add:"&min="|add:min|add:"&max="|add:max|add:"&sort="|add:sort|add:"&page_size="|add:page_size %}
   <nav class="mt-4 d-flex justify-content-center">
@@ -195,31 +161,24 @@
   {% endif %}
 </div>
 
-<!-- Toast -->
 <div id="toast-success" role="status" aria-live="polite">Đã thêm vào giỏ hàng!</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const toast = document.getElementById('toast-success');
   let toastTimer;
-
   function showToast(msg){
     if (!toast) return;
     toast.textContent = msg || 'Thao tác thành công';
-    toast.classList.remove('show');
-    toast.offsetHeight;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
+    toast.classList.remove('show'); toast.offsetHeight; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>toast.classList.remove('show'), 2000);
   }
 
   function buildAddItemUrl() {
     const uid = ("{{ request.session.user_id|default:'' }}").trim();
-    let url = '/api/cart/items/';
-    if (uid) url += `?tai_khoan_id=${encodeURIComponent(uid)}`;
+    let url = '/api/cart/items/'; if (uid) url += `?tai_khoan_id=${encodeURIComponent(uid)}`;
     return { url, uid };
   }
-
   async function addToCart(productId) {
     const { url, uid } = buildAddItemUrl();
     return fetch(url, {
@@ -244,131 +203,62 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.classList.add('active'); setTimeout(()=>btn.classList.remove('active'), 300);
           return;
         }
-        if (res.status === 400 || res.status === 401) {
-          window.location.href = '{% url "shop:shop_login" %}';
-          return;
-        }
+        if (res.status === 400 || res.status === 401) { window.location.href = '{% url "shop:shop_login" %}'; return; }
         showToast('Không thêm được vào giỏ. Vui lòng thử lại!');
       } catch (ex) {
-        console.error(ex);
-        showToast('Có lỗi mạng. Vui lòng thử lại!');
-      } finally {
-        btn.disabled = false;
-      }
+        console.error(ex); showToast('Có lỗi mạng. Vui lòng thử lại!');
+      } finally { btn.disabled = false; }
     });
   });
 
-  // Mua ngay
-  document.querySelectorAll('.btn-buy-now-action').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
+  // ===== MUA NGAY: lưu CẢ sessionStorage + localStorage, rồi sang checkout
+  document.querySelectorAll('.btn-buy-now-action').forEach(oldBtn => {
+    const btn = oldBtn.cloneNode(true);
+    oldBtn.replaceWith(btn);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopImmediatePropagation();
       const id = (btn.dataset.id || '').trim(); if (!id) return;
-      btn.disabled = true;
+
+      const item = {
+        san_pham_id: id,
+        ten: btn.dataset.name || 'Sản phẩm',
+        gia: Number(btn.dataset.price || 0),
+        so_luong: 1,
+        img: btn.dataset.img || ''
+      };
       try {
-        const res = await addToCart(id);
-        if (res.ok) {
-          if (window.updateCartBadge) window.updateCartBadge();
-          window.location.href = '{% url "shop:cart_page" %}';
-          return;
-        }
-        if (res.status === 400 || res.status === 401) {
-          window.location.href = '{% url "shop:shop_login" %}';
-          return;
-        }
-        window.location.href = '{% url "shop:cart_page" %}';
-      } catch (ex) {
-        console.error(ex);
-        window.location.href = '{% url "shop:cart_page" %}';
-      } finally {
-        btn.disabled = false;
-      }
+        const s = JSON.stringify(item);
+        sessionStorage.setItem('buy_now_item', s);
+        localStorage.setItem('buy_now_item', s);
+      } catch {}
+      window.location.href = "{% url 'shop:checkout' %}";
     });
   });
 
-  // ===== Dropdown Danh mục (scroll) =====
-  const catBtn   = document.getElementById('catBtn');
-  const catMenu  = document.getElementById('catMenu');
-  const catLabel = document.getElementById('catLabel');
-  const catHidden= document.getElementById('catHidden');
-
+  // ===== Dropdown Danh mục =====
+  const catBtn=document.getElementById('catBtn'),catMenu=document.getElementById('catMenu'),catLabel=document.getElementById('catLabel'),catHidden=document.getElementById('catHidden');
   function setCatLabelFromValue(val){
-    if (!val){
-      catLabel.textContent = 'Tất cả danh mục';
-      return;
-    }
+    if (!val){catLabel.textContent='Tất cả danh mục';return;}
     const active = catMenu.querySelector(`.cat-item[data-id="${CSS.escape(String(val))}"]`);
     catLabel.textContent = active ? active.textContent.trim() : 'Tất cả danh mục';
   }
-
-  setCatLabelFromValue(catHidden.value || '');
-
-  catBtn?.addEventListener('click', () => {
-    catMenu.classList.toggle('show');
-    catBtn.setAttribute('aria-expanded', catMenu.classList.contains('show') ? 'true' : 'false');
-  });
-
+  setCatLabelFromValue(catHidden?.value || '');
+  catBtn?.addEventListener('click', () => {catMenu.classList.toggle('show');catBtn.setAttribute('aria-expanded',catMenu.classList.contains('show')?'true':'false');});
   catMenu?.addEventListener('click', (e) => {
-    const item = e.target.closest('.cat-item');
-    if (!item) return;
-    e.preventDefault();
-    // active class
-    catMenu.querySelectorAll('.cat-item.active').forEach(x => x.classList.remove('active'));
-    item.classList.add('active');
-
-    catHidden.value = item.dataset.id || '';
-    catLabel.textContent = item.textContent.trim() || 'Tất cả danh mục';
-    // đóng menu
-    catMenu.classList.remove('show');
-    catBtn.setAttribute('aria-expanded','false');
+    const item = e.target.closest('.cat-item'); if (!item) return; e.preventDefault();
+    catMenu.querySelectorAll('.cat-item.active').forEach(x => x.classList.remove('active')); item.classList.add('active');
+    catHidden.value = item.dataset.id || ''; catLabel.textContent = item.textContent.trim() || 'Tất cả danh mục';
+    catMenu.classList.remove('show'); catBtn.setAttribute('aria-expanded','false');
   });
+  document.addEventListener('click', (e) => { if (!catMenu?.contains(e.target) && !catBtn?.contains(e.target)) { catMenu?.classList.remove('show'); catBtn?.setAttribute('aria-expanded','false'); }});
 
-  document.addEventListener('click', (e) => {
-    if (!catMenu.contains(e.target) && !catBtn.contains(e.target)) {
-      catMenu.classList.remove('show');
-      catBtn.setAttribute('aria-expanded','false');
-    }
-  });
-
-  // ===== Giá min/max: format dấu phẩy khi gõ + bỏ dấu khi submit =====
-  const minInput = document.getElementById('minPrice');
-  const maxInput = document.getElementById('maxPrice');
-
-  const formatComma = (digitsStr) => {
-    const clean = (digitsStr || '').replace(/[^\d]/g, '');
-    if (!clean) return '';
-    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  };
-  const handlePriceInput = (el) => {
-    const v = el.value;
-    const f = formatComma(v);
-    if (f !== v) {
-      const end = f.length;
-      el.value = f;
-      // caret cuối cho đơn giản
-      try { el.setSelectionRange(end, end); } catch (_) {}
-    }
-  };
-  const blockNonDigit = (e) => {
-    const isDigit = /\d/.test(e.key);
-    const isControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key);
-    if (!isDigit && !isControl) e.preventDefault();
-  };
-
-  [minInput, maxInput].forEach(inp => {
-    if (!inp) return;
-    // đảm bảo format nếu server trả về số chưa có dấu
-    inp.value = formatComma(inp.value);
-    inp.addEventListener('input', () => handlePriceInput(inp));
-    inp.addEventListener('keypress', blockNonDigit);
-    inp.addEventListener('blur', () => inp.value = formatComma(inp.value));
-  });
-
-  // Bỏ dấu phẩy trước khi submit (để query string là số nguyên)
-  const filterForm = document.getElementById('filterForm');
-  filterForm?.addEventListener('submit', () => {
-    if (minInput) minInput.value = (minInput.value || '').replace(/[^\d]/g,'');
-    if (maxInput) maxInput.value = (maxInput.value || '').replace(/[^\d]/g,'');
-  });
+  // Giá min/max
+  const minInput=document.getElementById('minPrice'),maxInput=document.getElementById('maxPrice');
+  const formatComma = (s)=>{const c=(s||'').replace(/[^\d]/g,'');return c?c.replace(/\B(?=(\d{3})+(?!\d))/g,','):''};
+  const handle=(el)=>{const v=el.value,f=formatComma(v);if(f!==v){el.value=f;try{el.setSelectionRange(f.length,f.length);}catch{}}};
+  const block=(e)=>{const d=/\d/.test(e.key),ctl=['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key);if(!d&&!ctl)e.preventDefault();};
+  [minInput,maxInput].forEach(inp=>{if(!inp)return;inp.value=formatComma(inp.value);inp.addEventListener('input',()=>handle(inp));inp.addEventListener('keypress',block);inp.addEventListener('blur',()=>inp.value=formatComma(inp.value));});
+  document.getElementById('filterForm')?.addEventListener('submit',()=>{if(minInput)minInput.value=(minInput.value||'').replace(/[^\d]/g,'');if(maxInput)maxInput.value=(maxInput.value||'').replace(/[^\d]/g,'');});
 
   window.showToast = showToast;
 });

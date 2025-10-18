@@ -1,0 +1,18 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Xóa danh mục · Admin{% endblock %}
+{% block page_title %}Xóa danh mục{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-body">
+    <p>Bạn có chắc muốn xóa danh mục: <strong>{{ cat.ten }}</strong>?</p>
+    <p class="text-muted">ID: <code>{{ cat.id }}</code></p>
+
+    <form method="post">
+      {% csrf_token %}
+      <a href="{% url 'shop:admin_categories' %}" class="btn btn-secondary">Hủy</a>
+      <button type="submit" class="btn btn-danger">Xác nhận xóa</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

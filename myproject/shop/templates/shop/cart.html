@@ -9,11 +9,13 @@
   <div class="container">
     <h2 class="h4 mb-4"><i class="bi bi-bag me-2"></i>Giỏ hàng của bạn</h2>
 
+    <!-- Empty -->
     <div id="cartEmpty" class="text-center text-muted py-5 d-none">
       <i class="bi bi-cart-x fs-1 d-block mb-2" style="color:#2e7d32"></i>
       Giỏ hàng trống. <a href="{% url 'shop:sanpham_list' %}" class="link-success">Mua sắm ngay</a>.
     </div>
 
+    <!-- Wrap -->
     <div id="cartWrap" class="row g-4 d-none">
       <!-- Bảng items -->
       <div class="col-lg-8">
@@ -29,9 +31,7 @@
                 <th class="text-end" style="width:56px;"></th>
               </tr>
             </thead>
-            <tbody id="cartBody">
-              <!-- JS render -->
-            </tbody>
+            <tbody id="cartBody"><!-- JS render --></tbody>
           </table>
         </div>
         <div class="d-flex gap-2">
@@ -62,7 +62,7 @@
             <button id="btnCheckout" class="btn btn-success w-100 mt-3" disabled>
               <i class="bi bi-bag-check me-1"></i> Thanh toán
             </button>
-            <div class="form-text mt-2">* Phí vận chuyển/tax (nếu có) sẽ được áp dụng ở bước sau.</div>
+            <div class="form-text mt-2">* Phí vận chuyển/tax (nếu có) sẽ áp dụng ở bước sau.</div>
           </div>
         </div>
       </div>
@@ -82,11 +82,16 @@
 {% block extra_js %}
 <script>
 (() => {
-  const money = (v) => {
-    try { v = Number(v||0); } catch(e) { v = 0; }
-    return v.toLocaleString('vi-VN') + ' VNĐ';
-  };
+  const MEDIA_URL = "{{ MEDIA_URL|default:'' }}";
+  const PLACEHOLDER_URL = "{% static 'images/placeholder/produce.png' %}";
+  const money = (v) => (Number(v||0)).toLocaleString('vi-VN') + ' VNĐ';
 
+  // ===== User ID cho API =====
+  const UID = ("{{ request.session.user_id|default:'' }}").trim();
+  const authHeaders = UID ? {'X-User-Id': UID} : {};
+  const withUid = (url) => UID ? url + (url.includes('?')?'&':'?') + 'tai_khoan_id=' + encodeURIComponent(UID) : url;
+
+  // ===== Toast =====
   const toastEl = document.getElementById('cartToast');
   function showToast(msg, isError=false) {
     toastEl.classList.remove('bg-success','bg-danger');
@@ -95,6 +100,7 @@
     new bootstrap.Toast(toastEl, { delay: 2000 }).show();
   }
 
+  // ===== DOM =====
   const elEmpty = document.getElementById('cartEmpty');
   const elWrap  = document.getElementById('cartWrap');
   const elBody  = document.getElementById('cartBody');
@@ -104,12 +110,11 @@
   const btnClear = document.getElementById('btnClearCart');
   const btnCheckout = document.getElementById('btnCheckout');
 
-  // Load giỏ
+  // ===== Load giỏ =====
   async function loadCart() {
-    const res = await fetch('/api/cart/?include_product=1', { method: 'GET' });
-    if (res.status === 400 || res.status === 401) {
-      elWrap.classList.add('d-none');
-      elEmpty.classList.remove('d-none');
+    const res = await fetch(withUid('/api/cart/?include_product=1'), { method: 'GET', headers: authHeaders, credentials:'same-origin' });
+    if (!res.ok) {
+      renderCart([], 0);
       return;
     }
     const data = await res.json();
@@ -139,12 +144,14 @@
       const tr = document.createElement('tr');
       tr.dataset.id = item.id;
 
+      const imgSrc = img ? (String(img).startsWith('http') ? img : (MEDIA_URL + img)) : PLACEHOLDER_URL;
+
       tr.innerHTML = `
         <td>
-          <img src="{{ MEDIA_URL }}${img}" alt="${sp.ten_san_pham || ''}" class="rounded" style="width:56px;height:56px;object-fit:cover;">
+          <img src="${imgSrc}" alt="${sp.ten_san_pham || ''}" class="rounded" style="width:56px;height:56px;object-fit:cover;">
         </td>
         <td>
-          <div class="fw-semibold">${sp.ten_san_pham || '(Sản phẩm)'}</div>
+          <div class="fw-semibold">${sp.ten_san_pham || sp.ten || '(Sản phẩm)'}</div>
           <div class="text-muted small">Mã: ${sp.id || item.san_pham_id}</div>
         </td>
         <td class="text-end">${money(item.don_gia)}</td>
@@ -169,20 +176,17 @@
     btnCheckout.disabled = false;
   }
 
-  // +/- / đổi qty / xóa
+  // ===== +/- / đổi qty / xoá dòng =====
   elBody.addEventListener('click', async (e) => {
-    const tr = e.target.closest('tr');
-    if (!tr) return;
+    const tr = e.target.closest('tr'); if (!tr) return;
     const id = tr.dataset.id;
     const qtyInput = tr.querySelector('.qty-input');
 
     if (e.target.closest('.btn-inc')) {
-      const newQty = Number(qtyInput.value || 1) + 1;
-      await updateQuantity(id, newQty);
+      await updateQuantity(id, Number(qtyInput.value || 1) + 1);
     }
     if (e.target.closest('.btn-dec')) {
-      const newQty = Math.max(1, Number(qtyInput.value || 1) - 1);
-      await updateQuantity(id, newQty);
+      await updateQuantity(id, Math.max(1, Number(qtyInput.value || 1) - 1));
     }
     if (e.target.closest('.btn-remove')) {
       await removeItem(id);
@@ -190,67 +194,61 @@
   });
 
   elBody.addEventListener('change', async (e) => {
-    if (e.target.classList.contains('qty-input')) {
-      const tr = e.target.closest('tr'); if (!tr) return;
-      const id = tr.dataset.id;
-      const val = Math.max(1, Number(e.target.value || 1));
-      await updateQuantity(id, val);
-    }
-  });
-
-  // Clear cart – ẩn badge ngay
-  btnClear.addEventListener('click', async () => {
-    if (!confirm('Bạn chắc muốn xóa toàn bộ giỏ hàng?')) return;
-    if (window.hideCartBadge) window.hideCartBadge();
-
-    const res = await fetch('/api/cart/clear/', { method: 'DELETE' });
-    if (res.ok) {
-      loadCart();
-    } else {
-      const err = await safeJson(res);
-      showToast('Không thể xóa giỏ hàng' + (err.error ? (': ' + err.error) : ''), true);
-      if (window.refreshCartBadge) window.refreshCartBadge();
-    }
+    if (!e.target.classList.contains('qty-input')) return;
+    const tr = e.target.closest('tr'); if (!tr) return;
+    await updateQuantity(tr.dataset.id, Math.max(1, Number(e.target.value || 1)));
   });
 
   async function updateQuantity(id, qty) {
-    const res = await fetch(`/api/cart/items/${id}/`, {
+    const res = await fetch(withUid(`/api/cart/items/${id}/`), {
       method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ so_luong: qty })
+      headers: {'Content-Type': 'application/json', ...authHeaders},
+      body: JSON.stringify({ so_luong: qty }),
+      credentials: 'same-origin'
     });
-    if (res.status === 204) return loadCart();
-    if (!res.ok) {
+    if (!res.ok && res.status !== 204) {
       const err = await safeJson(res);
-      showToast('Lỗi: ' + (err.error || res.status), true);
-      return;
+      showToast('Lỗi cập nhật: ' + (err.error || res.status), true);
     }
     loadCart();
   }
 
   async function removeItem(id) {
-    const res = await fetch(`/api/cart/items/${id}/delete/`, { method: 'DELETE' });
-    if (res.status === 204) {
-      loadCart();
-    } else {
+    const res = await fetch(withUid(`/api/cart/items/${id}/delete/`), { method: 'DELETE', headers: authHeaders, credentials:'same-origin' });
+    if (!res.ok && res.status !== 204) {
       const err = await safeJson(res);
-      showToast('Lỗi: ' + (err.error || res.status), true);
+      showToast('Lỗi xoá: ' + (err.error || res.status), true);
     }
+    loadCart();
   }
 
-  async function safeJson(res) {
-    try { return await res.json(); } catch(e) { return {}; }
-  }
-
-  // ✅ CHỈ ĐIỀU HƯỚNG SANG FORM CHECKOUT — KHÔNG GỌI API ĐẶT HÀNG Ở ĐÂY
-  document.getElementById('btnCheckout').addEventListener('click', () => {
-    // Dùng reverse name:
-    // window.location.href = "{% url 'shop:checkout' %}";
-    // Hoặc path tĩnh (an toàn khi test):
-    window.location.href = "/checkout/";
+  // ===== Xoá toàn bộ =====
+  btnClear.addEventListener('click', async () => {
+    if (!confirm('Bạn chắc muốn xóa toàn bộ giỏ hàng?')) return;
+    const res = await fetch(withUid('/api/cart/clear/'), { method: 'DELETE', headers: authHeaders, credentials:'same-origin' });
+    if (!res.ok) {
+      const err = await safeJson(res);
+      showToast('Không thể xóa giỏ hàng' + (err.error ? (': ' + err.error) : ''), true);
+    }
+    loadCart();
+    if (window.updateCartBadge) window.updateCartBadge(0);
   });
 
-  // init
+  // ===== Thanh toán: set mode 'cart' rồi sang checkout =====
+  btnCheckout.addEventListener('click', () => {
+    try {
+      sessionStorage.setItem('checkout_mode', 'cart');
+      localStorage.removeItem('buy_now_item');
+      sessionStorage.removeItem('buy_now_item');
+    } catch {}
+    window.location.href = "{% url 'shop:checkout' %}";
+  });
+
+  async function safeJson(res) {
+    try { return await res.json(); } catch { return {}; }
+  }
+
+  // Init
   loadCart();
 })();
 </script>

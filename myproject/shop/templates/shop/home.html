@@ -77,6 +77,7 @@
   }
   #toast-success.show{opacity:1;transform:translateY(0);}
 </style>
+
 <section class="py-5">
   <div class="container">
     <div class="d-flex align-items-center justify-content-between mb-3">
@@ -103,10 +104,21 @@
             <p class="text-muted small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
             <div class="price-tag mb-2">{{ sp.gia|intcomma }} VNĐ</div>
             <div class="mt-auto d-flex flex-column gap-2">
-              <button type="button" class="btn btn-buy-immediate w-100 btn-buy-now-action"
-                      data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
+              <!-- MUA NGAY: THÊM data-price & data-img để checkout hiển thị đúng -->
+              <button type="button"
+                      class="btn btn-buy-immediate w-100 btn-buy-now-action"
+                      data-id="{{ sp.id }}"
+                      data-name="{{ sp.ten }}"
+                      data-price="{{ sp.gia }}"
+                      {% if sp.hinh_anh and sp.hinh_anh.0 %}
+                        data-img="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}"
+                      {% else %}
+                        data-img="{% static 'images/placeholder/produce.png' %}"
+                      {% endif %}
+              >
                 <i class="bi bi-lightning-charge-fill"></i> Mua ngay
               </button>
+
               <button type="button" class="btn btn-add-cart w-100"
                       data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
                 <i class="bi bi-bag-plus"></i> Thêm vào giỏ
@@ -125,6 +137,7 @@
     </div>
   </div>
 </section>
+
 <!-- USP -->
 <section class="py-5 bg-soft-green full-bleed">
   <div class="container px-5">
@@ -155,9 +168,6 @@
   </div>
 </section>
 
-<!-- Sản phẩm nổi bật -->
-
-
 <!-- Toast -->
 <div id="toast-success" role="status" aria-live="polite">Đã thêm vào giỏ hàng!</div>
 
@@ -169,9 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function showToast(msg){
     if (!toast) return;
     toast.textContent = msg || 'Thao tác thành công';
-    toast.classList.remove('show');
-    // ép reflow
-    // eslint-disable-next-line no-unused-expressions
+    toast.classList.remove('show'); // ép reflow
     toast.offsetHeight;
     toast.classList.add('show');
     clearTimeout(toastTimer);
@@ -223,30 +231,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Mua ngay
-  document.querySelectorAll('.btn-buy-now-action').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+  // ===== MUA NGAY (không qua giỏ): lưu sessionStorage + localStorage rồi sang checkout
+  document.querySelectorAll('.btn-buy-now-action').forEach(oldBtn => {
+    const btn = oldBtn.cloneNode(true);      // xoá mọi listener cũ nếu có
+    oldBtn.replaceWith(btn);
+
+    btn.addEventListener('click', (e) => {
       e.preventDefault();
+
       const id = (btn.dataset.id || '').trim(); if (!id) return;
-      btn.disabled = true;
+
+      const item = {
+        san_pham_id: id,
+        ten: btn.dataset.name || 'Sản phẩm',
+        gia: Number(btn.dataset.price || 0),
+        so_luong: 1,
+        img: btn.dataset.img || ''
+      };
+
       try {
-        const res = await addToCart(id);
-        if (res.ok) {
-          if (window.updateCartBadge) window.updateCartBadge();
-          window.location.href = '{% url "shop:cart_page" %}';
-          return;
-        }
-        if (res.status === 400 || res.status === 401) {
-          window.location.href = '{% url "shop:shop_login" %}';
-          return;
-        }
-        window.location.href = '{% url "shop:cart_page" %}';
-      } catch (ex) {
-        console.error(ex);
-        window.location.href = '{% url "shop:cart_page" %}';
-      } finally {
-        btn.disabled = false;
-      }
+        const s = JSON.stringify(item);
+        sessionStorage.setItem('buy_now_item', s);
+        localStorage.setItem('buy_now_item', s);
+      } catch {}
+
+      // Chuyển thẳng tới Checkout
+      window.location.href = "{% url 'shop:checkout' %}";
     });
   });
 

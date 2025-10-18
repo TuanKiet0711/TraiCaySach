@@ -1,0 +1,112 @@
+{% extends "shop/base.html" %}
+{% block title %}Đăng nhập | Trái Cây Sạch{% endblock %}
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <h1>Đăng nhập</h1>
+    <p class="sub">Chào mừng quay lại với Trái Cây Sạch 🍃</p>
+
+    <form id="loginForm">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="email">Email *</label>
+        <input id="email" name="email" type="email" placeholder="nhapemail@domain.com" required />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mật khẩu *</label>
+        <div class="password-row">
+          <input id="password" name="password" type="password" placeholder="••••••••" required />
+          <button class="ghost" type="button" id="togglePwd">Hiện</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="nextUrl" value="{{ next_url|default:'/' }}"/>
+
+      <button id="btnLogin" type="submit" class="primary w-100">Đăng nhập</button>
+      <div id="msg" class="msg" aria-live="polite"></div>
+    </form>
+
+    <div class="alt">
+      Chưa có tài khoản?
+      <a href="{% url 'shop:shop_register' %}{% if next_url %}?next={{ next_url }}{% endif %}">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .auth-wrapper{display:flex;justify-content:center;align-items:center;min-height:68vh;padding:24px;}
+  .auth-card{width:100%;max-width:420px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:28px;}
+  h1{margin:0 0 8px;font-size:26px}
+  .sub{margin:0 0 18px;color:#666}
+  .form-group{margin-bottom:14px}
+  label{display:block;margin-bottom:6px;font-weight:600}
+  input{width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;outline:none}
+  input:focus{border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+  .password-row{display:flex;gap:8px;align-items:center}
+  .password-row .ghost{white-space:nowrap;border:none;background:transparent;padding:0 10px;color:#111;cursor:pointer}
+  .primary{background:#16a34a;border:none;color:#fff;font-weight:700;padding:12px 16px;border-radius:12px;cursor:pointer}
+  .primary:disabled{opacity:.6;cursor:not-allowed}
+  .w-100{width:100%}
+  .alt{margin-top:14px;text-align:center}
+  .alt a{color:#16a34a;font-weight:600}
+  .msg{margin-top:10px;font-size:14px;color:#b91c1c}
+  .toast{position:fixed;right:14px;top:14px;background:#16a34a;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.12);display:none}
+</style>
+
+<div id="toast" class="toast">Đăng nhập thành công!</div>
+
+<script>
+  const form = document.getElementById('loginForm');
+  const btn  = document.getElementById('btnLogin');
+  const msg  = document.getElementById('msg');
+  const toast= document.getElementById('toast');
+  const btnToggle = document.getElementById('togglePwd');
+
+  btnToggle.addEventListener('click', () => {
+    const i = document.getElementById('password');
+    const show = i.type === 'password';
+    i.type = show ? 'text' : 'password';
+    btnToggle.textContent = show ? 'Ẩn' : 'Hiện';
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    btn.disabled = true;
+
+    const payload = {
+      email: (document.getElementById('email').value || '').trim().toLowerCase(),
+      password: (document.getElementById('password').value || '').trim()
+    };
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin'
+      });
+      const data = await res.json().catch(()=> ({}));
+
+      if (!res.ok) {
+        msg.textContent = data?.error || 'Đăng nhập thất bại';
+      } else {
+        toast.style.display = 'block';
+        setTimeout(() => {
+          const nextUrl = document.getElementById('nextUrl').value || '/';
+          window.location.href = nextUrl;
+        }, 600);
+      }
+    } catch (err) {
+      msg.textContent = 'Lỗi mạng, vui lòng thử lại.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

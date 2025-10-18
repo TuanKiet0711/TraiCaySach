@@ -24,54 +24,19 @@
             <form id="checkoutForm" class="row g-3" autocomplete="off" novalidate>
               <div class="col-md-6">
                 <label class="form-label" for="inputName">Họ và tên</label>
-                <input
-                  name="ho_ten"
-                  id="inputName"
-                  type="text"
-                  class="form-control"
-                  placeholder="Nhập họ và tên"
-                  autocomplete="name"
-                  required
-                >
+                <input name="ho_ten" id="inputName" type="text" class="form-control" placeholder="Nhập họ và tên" autocomplete="name" required>
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="inputPhone">Số điện thoại</label>
-                <input
-                  name="sdt"
-                  id="inputPhone"
-                  type="tel"
-                  class="form-control"
-                  required
-                  inputmode="numeric"
-                  pattern="^[0-9]{8,15}$"
-                  maxlength="15"
-                  placeholder="Nhập số điện thoại"
-                  title="Chỉ nhập số, từ 8 đến 15 ký tự"
-                  aria-describedby="phoneHelp"
-                  autocomplete="tel"
-                >
+                <input name="sdt" id="inputPhone" type="tel" class="form-control" required inputmode="numeric" pattern="^[0-9]{8,15}$" maxlength="15" placeholder="Nhập số điện thoại" title="Chỉ nhập số, từ 8 đến 15 ký tự" autocomplete="tel">
               </div>
               <div class="col-12">
                 <label class="form-label" for="inputAddress">Địa chỉ</label>
-                <input
-                  name="dia_chi"
-                  id="inputAddress"
-                  type="text"
-                  class="form-control"
-                  placeholder="Nhập địa chỉ"
-                  autocomplete="street-address"
-                  required
-                >
+                <input name="dia_chi" id="inputAddress" type="text" class="form-control" placeholder="Nhập địa chỉ" autocomplete="street-address" required>
               </div>
               <div class="col-12">
                 <label class="form-label" for="inputNote">Ghi chú</label>
-                <textarea
-                  name="ghi_chu"
-                  id="inputNote"
-                  class="form-control"
-                  rows="2"
-                  placeholder="Nhập ghi chú (nếu có)"
-                ></textarea>
+                <textarea name="ghi_chu" id="inputNote" class="form-control" rows="2" placeholder="Nhập ghi chú (nếu có)"></textarea>
               </div>
               <div class="col-md-6">
                 <label class="form-label" for="paymentSelect">Phương thức thanh toán</label>
@@ -85,8 +50,7 @@
               <div class="col-12" id="bankTransferWrap" style="display:none;">
                 <div class="alert alert-success-subtle border border-success-subtle bank-hint">
                   <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-bank me-2"></i>
-                    <strong>Hướng dẫn chuyển khoản</strong>
+                    <i class="bi bi-bank me-2"></i><strong>Hướng dẫn chuyển khoản</strong>
                   </div>
 
                   <div class="row g-3">
@@ -94,30 +58,29 @@
                       <label class="form-label mb-1" for="bankName">Ngân hàng</label>
                       <div class="input-group">
                         <input type="text" class="form-control" id="bankName" value="Tiên Phong Bank" readonly>
-                        <button class="btn btn-outline-success" type="button" data-copy="#bankName" aria-label="Copy ngân hàng"><i class="bi bi-clipboard"></i></button>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankName"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label mb-1" for="bankNo">Số tài khoản</label>
                       <div class="input-group">
                         <input type="text" class="form-control" id="bankNo" value="89756888888" readonly>
-                        <button class="btn btn-outline-success" type="button" data-copy="#bankNo" aria-label="Copy số tài khoản"><i class="bi bi-clipboard"></i></button>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankNo"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label mb-1" for="bankOwner">Chủ tài khoản</label>
                       <div class="input-group">
                         <input type="text" class="form-control" id="bankOwner" value="Lâm Diệu Kiệt" readonly>
-                        <button class="btn btn-outline-success" type="button" data-copy="#bankOwner" aria-label="Copy chủ tài khoản"><i class="bi bi-clipboard"></i></button>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankOwner"><i class="bi bi-clipboard"></i></button>
                       </div>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label mb-1" for="bankMemo">Nội dung chuyển khoản</label>
                       <div class="input-group">
                         <input type="text" class="form-control" id="bankMemo" value="Thanh toan don hang - SDT: 0xxx " readonly>
-                        <button class="btn btn-outline-success" type="button" data-copy="#bankMemo" aria-label="Copy nội dung"><i class="bi bi-clipboard"></i></button>
+                        <button class="btn btn-outline-success" type="button" data-copy="#bankMemo"><i class="bi bi-clipboard"></i></button>
                       </div>
-                     
                     </div>
                   </div>
 
@@ -137,7 +100,11 @@
       <div class="col-lg-5">
         <div class="card border-success-subtle">
           <div class="card-body">
-            <h5 class="card-title">Tóm tắt</h5>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="card-title mb-0">Tóm tắt</h5>
+              
+            </div>
+
             <div id="cartList" class="small mb-2 text-muted"></div>
 
             <div class="d-flex justify-content-between">
@@ -152,9 +119,7 @@
             <button id="btnPlaceOrder" class="btn btn-success w-100 mt-3" disabled>
               <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
             </button>
-            <a href="{% url 'shop:cart_page' %}" class="btn btn-outline-success w-100 mt-2">
-              ← Quay lại giỏ hàng
-            </a>
+            <a href="{% url 'shop:cart_page' %}" class="btn btn-outline-success w-100 mt-2">← Quay lại giỏ hàng</a>
           </div>
         </div>
       </div>
@@ -162,7 +127,6 @@
   </div>
 </section>
 
-<!-- Toast -->
 <div id="toast" class="toast align-items-center text-white position-fixed top-0 end-0 m-3" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:1100;">
   <div class="d-flex">
     <div class="toast-body"></div>
@@ -176,7 +140,6 @@
 (() => {
   const MEDIA_URL = "{{ MEDIA_URL|default:'' }}";
   const PLACEHOLDER_URL = "{% static 'images/placeholder/produce.png' %}";
-
   const money = v => (Number(v||0)).toLocaleString('vi-VN') + ' VNĐ';
 
   // Toast
@@ -188,7 +151,7 @@
     new bootstrap.Toast(toastEl, {delay:2000}).show();
   }
 
-  // DOM refs
+  // DOM
   const cartList    = document.getElementById('cartList');
   const sumSubtotal = document.getElementById('sumSubtotal');
   const sumTotal    = document.getElementById('sumTotal');
@@ -199,83 +162,80 @@
   const memoInput   = document.getElementById('bankMemo');
   const inputPhone  = document.getElementById('inputPhone');
 
-  // ====== CHỈ CHO NHẬP SỐ 0–9 CHO SĐT ======
+  // Phone only digits
   const digitsOnly = (s) => (s || '').replace(/\D+/g, '').slice(0, 15);
-  function sanitizePhone() {
-    const cur = inputPhone.value;
-    const clean = digitsOnly(cur);
-    if (cur !== clean) inputPhone.value = clean;
-  }
+  function sanitizePhone(){ const cur=inputPhone.value, clean=digitsOnly(cur); if(cur!==clean) inputPhone.value=clean; }
   inputPhone.addEventListener('input', sanitizePhone);
-  inputPhone.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text');
-    document.execCommand('insertText', false, digitsOnly(text));
-  });
-  inputPhone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    const text = e.dataTransfer.getData('text');
-    inputPhone.value = digitsOnly(text);
-  });
-  inputPhone.addEventListener('keypress', (e) => {
-    const isDigit = /[0-9]/.test(e.key);
-    const isCtrl = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End","Enter"].includes(e.key);
-    if (!isDigit && !isCtrl) e.preventDefault();
-  });
+  inputPhone.addEventListener('paste', (e)=>{ e.preventDefault(); const t=(e.clipboardData||window.clipboardData).getData('text'); document.execCommand('insertText', false, digitsOnly(t)); });
+  inputPhone.addEventListener('drop',  (e)=>{ e.preventDefault(); const t=e.dataTransfer.getData('text'); inputPhone.value = digitsOnly(t); });
+  inputPhone.addEventListener('keypress', (e)=>{ const d=/[0-9]/.test(e.key); const ctl=["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End","Enter"].includes(e.key); if(!d&&!ctl)e.preventDefault(); });
 
-  // Toggle hướng dẫn chuyển khoản
-  function toggleBankGuide(){
-    const isBank = (paySelect.value === 'chuyen_khoan');
-    bankWrap.style.display = isBank ? '' : 'none';
-  }
-  paySelect.addEventListener('change', toggleBankGuide);
-  toggleBankGuide(); // init
+  // Bank guide
+  function toggleBankGuide(){ bankWrap.style.display = (paySelect.value === 'chuyen_khoan') ? '' : 'none'; }
+  paySelect.addEventListener('change', toggleBankGuide); toggleBankGuide();
 
-  // Tự ghép SĐT vào nội dung CK khi user nhập
-  form.querySelector('[name="sdt"]').addEventListener('input', (e) => {
-    const phone = (e.target.value || '').replace(/\s+/g,'');
-    const base  = 'Thanh toan don hang - SDT: ';
-    memoInput.value = base + phone;
-  });
+  // Auto memo = phone
+  form.querySelector('[name="sdt"]').addEventListener('input', (e)=>{ const phone=(e.target.value||'').replace(/\s+/g,''); memoInput && (memoInput.value = 'Thanh toan don hang - SDT: ' + phone); });
 
   // Copy helper
   document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-copy]');
-    if(!btn) return;
-    const sel = btn.getAttribute('data-copy');
-    const input = document.querySelector(sel);
-    if(!input) return;
-    try{
-      await navigator.clipboard.writeText(input.value || '');
-      toast('Đã sao chép!', false);
-    }catch(_){
-      toast('Không sao chép được, vui lòng chọn và copy thủ công.', true);
-    }
+    const btn = e.target.closest('[data-copy]'); if(!btn) return;
+    const sel = btn.getAttribute('data-copy'); const input = document.querySelector(sel); if(!input) return;
+    try{ await navigator.clipboard.writeText(input.value||''); toast('Đã sao chép!'); }catch{ toast('Không sao chép được, vui lòng copy thủ công.', true); }
   });
 
-  // Load giỏ + render có ảnh
+  // ===== BUY NOW utils (ưu tiên sessionStorage, fallback localStorage)
+  function getBuyNowItem(){
+    const parse = (s)=>{ try{ return JSON.parse(s||'null'); }catch{return null;} };
+    const s1 = parse(sessionStorage.getItem('buy_now_item'));
+    if (s1 && s1.san_pham_id) return s1;
+    const s2 = parse(localStorage.getItem('buy_now_item'));
+    return (s2 && s2.san_pham_id) ? s2 : null;
+  }
+  function clearBuyNow(){
+    try{ sessionStorage.removeItem('buy_now_item'); }catch{}
+    try{ localStorage.removeItem('buy_now_item'); }catch{}
+  }
+  document.getElementById('cancelBuyNow')?.addEventListener('click', ()=>{ clearBuyNow(); location.reload(); });
+
+  // Load tóm tắt
   async function loadCart(){
+    const buyNow = getBuyNowItem();
+    if (buyNow && buyNow.san_pham_id){
+      const img  = buyNow.img || PLACEHOLDER_URL;
+      const name = buyNow.ten || 'Sản phẩm';
+      const qty  = Number(buyNow.so_luong || 1);
+      const line = Number(buyNow.gia || 0) * qty;
+
+      cartList.innerHTML = `
+        <div class="checkout-cart-item">
+          <div class="left">
+            <img class="thumb" src="${img}" alt="${name}">
+            <div class="name" title="${name}">${name} × ${qty}</div>
+          </div>
+          <div class="right fw-semibold">${money(line)}</div>
+        </div>`;
+      sumSubtotal.textContent = money(line);
+      sumTotal.textContent    = money(line);
+      btnPlace.disabled = false;
+      return;
+    }
+
+    // Fallback: lấy từ giỏ
     const res = await fetch('/api/cart/?include_product=1');
-    if(!res.ok){ cartList.innerHTML = 'Giỏ hàng trống hoặc chưa đăng nhập.'; btnPlace.disabled = true; return; }
+    if(!res.ok){ cartList.innerHTML='Giỏ hàng trống.'; btnPlace.disabled=true; return; }
     const data = await res.json();
     const items = data.items||[];
-    if(!items.length){ cartList.innerHTML = 'Giỏ hàng trống.'; btnPlace.disabled = true; return; }
-    btnPlace.disabled = false;
+    if(!items.length){ cartList.innerHTML='Giỏ hàng trống.'; btnPlace.disabled=true; return; }
+    btnPlace.disabled=false;
 
-    let html = '', subtotal = 0;
+    let html='', subtotal=0;
     items.forEach(it=>{
       const sp = it.san_pham||{};
       const imgs = sp.hinh_anh || sp.hinh_anh_urls || [];
-      let img = '';
-      if (Array.isArray(imgs) && imgs.length && imgs[0]) {
-        const first = String(imgs[0]);
-        img = first.startsWith('http') ? first : (MEDIA_URL + first);
-      } else {
-        img = PLACEHOLDER_URL;
-      }
+      let img = (Array.isArray(imgs) && imgs.length && imgs[0]) ? (String(imgs[0]).startsWith('http') ? String(imgs[0]) : (MEDIA_URL + String(imgs[0]))) : PLACEHOLDER_URL;
       const name = sp.ten_san_pham || sp.ten || 'Sản phẩm';
       subtotal += Number(it.tong_tien||0);
-
       html += `
         <div class="checkout-cart-item">
           <div class="left">
@@ -287,43 +247,37 @@
     });
     cartList.innerHTML = html;
     sumSubtotal.textContent = money(subtotal);
-    sumTotal.textContent = money(subtotal);
+    sumTotal.textContent    = money(subtotal);
   }
 
   // Đặt hàng
   document.getElementById('btnPlaceOrder').addEventListener('click', async ()=>{
-    // Validate SĐT lần cuối
     sanitizePhone();
     const phone = inputPhone.value;
-    if (!phone || !/^[0-9]{8,15}$/.test(phone)) {
-      toast('SĐT không hợp lệ (chỉ số 0–9, 8–15 ký tự).', true);
-      inputPhone.focus();
-      return;
-    }
+    if (!phone || !/^[0-9]{8,15}$/.test(phone)){ toast('SĐT không hợp lệ (chỉ số 0–9, 8–15 ký tự).', true); inputPhone.focus(); return; }
 
     const fd = new FormData(form);
-    const payload = {
-      use_cart: true,
+    const baseInfo = {
       phuong_thuc_thanh_toan: fd.get('phuong_thuc_thanh_toan') || 'cod',
       ho_ten: (fd.get('ho_ten')||'').trim(),
       sdt: phone,
       dia_chi: (fd.get('dia_chi')||'').trim(),
       ghi_chu: (fd.get('ghi_chu')||'').trim(),
     };
-    if(!payload.ho_ten || !payload.dia_chi){
-      toast('Vui lòng điền đủ họ tên và địa chỉ', true); return;
-    }
+    if(!baseInfo.ho_ten || !baseInfo.dia_chi){ toast('Vui lòng điền đủ họ tên và địa chỉ', true); return; }
 
-    const res = await fetch('/api/orders/checkout/', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
-    });
+    const buyNow = getBuyNowItem();
+    const payload = (buyNow && buyNow.san_pham_id)
+      ? { use_cart:false, ...baseInfo, items:[{ san_pham_id: buyNow.san_pham_id, so_luong: buyNow.so_luong || 1 }] }
+      : { use_cart:true,  ...baseInfo };
+
+    const res = await fetch('/api/orders/checkout/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     if(res.ok){
       toast('Đặt hàng thành công!');
+      clearBuyNow();
       setTimeout(()=>{ window.location.href = "{% url 'shop:my_orders_page' %}"; }, 800);
     }else{
-      let err = {}; try{ err = await res.json(); }catch(_){}
+      let err={}; try{ err=await res.json(); }catch{}
       toast('Lỗi đặt hàng: ' + (err.message || err.error || res.status), true);
     }
   });

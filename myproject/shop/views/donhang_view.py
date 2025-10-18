@@ -708,15 +708,29 @@ def order_detail(request, id: str):
     return HttpResponseNotAllowed(["GET", "PUT", "POST", "DELETE"])
 
 
-# =================== CHECKOUT (tạo đơn từ giỏ) ===================
+# =================== CHECKOUT (đặt từ giỏ / mua ngay) ===================
 @csrf_exempt
 @require_login_api
 @require_http_methods(["POST"])
 def orders_checkout(request):
     """
     POST /api/orders/checkout/
-    Body: {
+
+    Hỗ trợ 2 chế độ:
+      1) use_cart = true  -> lấy items từ giỏ của user
+      2) use_cart = false -> lấy items từ payload (mua ngay)
+
+    Body mẫu (giỏ):
+    {
       "use_cart": true,
+      "phuong_thuc_thanh_toan": "cod",
+      "ho_ten": "...", "sdt": "...", "dia_chi": "...", "ghi_chu": "..."
+    }
+
+    Body mẫu (mua ngay):
+    {
+      "use_cart": false,
+      "items": [{"san_pham_id": "<id>", "so_luong": 1}],
       "phuong_thuc_thanh_toan": "cod",
       "ho_ten": "...", "sdt": "...", "dia_chi": "...", "ghi_chu": "..."
     }
@@ -726,86 +740,173 @@ def orders_checkout(request):
     except Exception:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    if not (data.get("use_cart") in (True, 1, "1", "true", "True")):
-        return JsonResponse({"error": "Chỉ hỗ trợ đặt hàng từ giỏ (use_cart=true)"}, status=400)
-
-    pttt = (data.get("phuong_thuc_thanh_toan") or "cod").strip()
     user_oid = request.user_oid
+    use_cart = bool(data.get("use_cart", True))
+    pttt = (data.get("phuong_thuc_thanh_toan") or "cod").strip().lower()
 
-    # Lấy giỏ hàng
-    from ..database import gio_hang
-    cart_items = list(gio_hang.find({"tai_khoan_id": user_oid}))
-    if not cart_items:
-        return JsonResponse({"error": "Giỏ hàng trống"}, status=400)
-
-    # Chuẩn hoá items
+    # 1) Thu thập danh sách items + tính tổng tiền
     items, sp_ids, tong_tien = [], [], 0
     stock_requests = []
-    for it in cart_items:
-        sp_oid = it.get("san_pham_id")
-        if not isinstance(sp_oid, ObjectId):
+
+    if use_cart:
+        # ---- lấy items từ giỏ ----
+        from ..database import gio_hang
+        cart_items = list(gio_hang.find({"tai_khoan_id": user_oid}))
+        if not cart_items:
+            return JsonResponse({"error": "Giỏ hàng trống"}, status=400)
+
+        for it in cart_items:
+            sp_oid = it.get("san_pham_id")
+            if not isinstance(sp_oid, ObjectId):
+                try:
+                    sp_oid = ObjectId(str(sp_oid))
+                except Exception:
+                    return JsonResponse({"error": "san_pham_id trong giỏ không hợp lệ"}, status=400)
+
+            so_luong = int(it.get("so_luong", 0))
+            don_gia = int(it.get("don_gia", 0))
+            if so_luong <= 0 or don_gia < 0:
+                return JsonResponse({"error": "Dữ liệu giỏ không hợp lệ"}, status=400)
+
+            tien = so_luong * don_gia
+            tong_tien += tien
+            sp_ids.append(sp_oid)
+            items.append({
+                "san_pham_id": sp_oid,
+                "so_luong": so_luong,
+                "don_gia": don_gia,
+                "tong_tien": tien,
+            })
+            stock_requests.append({"san_pham_id": sp_oid, "so_luong": so_luong})
+
+    else:
+        # ---- mua ngay: lấy items từ payload ----
+        body_items = data.get("items") or []
+        if not isinstance(body_items, list) or not body_items:
+            return JsonResponse({"error": "Thiếu danh sách items (mua ngay)"}, status=400)
+
+        for it in body_items:
+            # chấp nhận chuỗi id
             try:
-                sp_oid = ObjectId(str(sp_oid))
+                sp_oid = ObjectId(str(it.get("san_pham_id")))
             except Exception:
-                return JsonResponse({"error": "san_pham_id trong giỏ không hợp lệ"}, status=400)
+                return JsonResponse({"error": "san_pham_id không hợp lệ"}, status=400)
 
-        so_luong = int(it.get("so_luong", 0))
-        don_gia = int(it.get("don_gia", 0))
-        if so_luong <= 0 or don_gia < 0:
-            return JsonResponse({"error": "Dữ liệu giỏ không hợp lệ"}, status=400)
+            so_luong = int(it.get("so_luong") or 1)
+            if so_luong <= 0:
+                return JsonResponse({"error": "so_luong phải > 0"}, status=400)
 
-        tien = so_luong * don_gia
-        tong_tien += tien
-        sp_ids.append(sp_oid)
-        items.append({
-            "san_pham_id": sp_oid,
-            "so_luong": so_luong,
-            "don_gia": don_gia,
-            "tong_tien": tien,
-        })
-        stock_requests.append({"san_pham_id": sp_oid, "so_luong": so_luong})
+            # Lấy giá từ DB để đảm bảo đúng giá hiện tại
+            sp_doc = san_pham.find_one({"_id": sp_oid}, {"gia": 1})
+            if not sp_doc:
+                return JsonResponse({"error": "Sản phẩm không tồn tại"}, status=404)
 
-    # ====== TRỪ TỒN KHO TRƯỚC KHI TẠO ĐƠN ======
+            don_gia = int(sp_doc.get("gia") or 0)
+            tien = so_luong * don_gia
+
+            tong_tien += tien
+            sp_ids.append(sp_oid)
+            items.append({
+                "san_pham_id": sp_oid,
+                "so_luong": so_luong,
+                "don_gia": don_gia,
+                "tong_tien": tien,
+            })
+            stock_requests.append({"san_pham_id": sp_oid, "so_luong": so_luong})
+
+    # 2) Trừ tồn kho trước khi tạo đơn
     ok, msg = _try_decrease_stock(stock_requests)
     if not ok:
         return JsonResponse({"error": "out_of_stock", "message": msg}, status=400)
 
+    # 3) Lắp document đơn hàng
     doc = {
         "tai_khoan_id": user_oid,
         "items": items,
-        "tong_tien": tong_tien,
-        "phuong_thuc_thanh_toan": pttt,
+        "tong_tien": int(tong_tien),
+        "phuong_thuc_thanh_toan": pttt or "cod",
         "trang_thai": "cho_xu_ly",
         "ngay_tao": timezone.now(),
+        "nguon_dat": "cart" if use_cart else "buy_now",
     }
 
-    # Gắn thông tin người nhận từ payload
+    # Thông tin người nhận từ payload (họ_tên/sdt/địa_chỉ/ghi_chú…)
     receiver = _extract_receiver_from_payload(data)
     _apply_receiver_aliases(doc, receiver)
 
     if ALWAYS_ADD_LEGACY_FIELDS:
         _add_legacy_fields(doc)
 
+    # 4) Ghi DB
     try:
         res = don_hang.insert_one(doc)
-    except WriteError:
-        _rollback_increase_stock(stock_requests)
-        try:
-            _add_legacy_fields(doc)
-            res = don_hang.insert_one(doc)
-        except Exception as e2:
-            return JsonResponse({"error": "db_write", "message": str(e2)}, status=400)
-    except DuplicateKeyError as e:
-        _rollback_increase_stock(stock_requests)
-        return JsonResponse({"error": "duplicate_key", "message": str(e)}, status=400)
     except Exception as e:
+        # rollback tồn
         _rollback_increase_stock(stock_requests)
-        return JsonResponse({"error": "unknown", "message": str(e)}, status=500)
+        return JsonResponse({"error": "db_write", "message": str(e)}, status=400)
 
     created = don_hang.find_one({"_id": res.inserted_id})
-    # Xoá giỏ sau khi tạo đơn
-    gio_hang.delete_many({"tai_khoan_id": user_oid})
 
+    # 5) Nếu đặt từ giỏ thì xóa giỏ
+    if use_cart:
+        from ..database import gio_hang
+        try:
+            gio_hang.delete_many({"tai_khoan_id": user_oid})
+        except Exception:
+            pass
+
+    # 6) Trả JSON chuẩn
     acc = tai_khoan.find_one({"_id": user_oid}, {"ho_ten": 1, "ten": 1, "email": 1})
     sp_map = {sp["_id"]: sp for sp in san_pham.find({"_id": {"$in": sp_ids}}, {"ten": 1, "ten_san_pham": 1})}
     return JsonResponse(_serialize_order(created, acc=acc, sp_map=sp_map), status=201)
+# =================== CANCEL (HỦY ĐƠN + HOÀN TỒN) ===================
+@csrf_exempt
+@require_login_api
+@require_http_methods(["POST"])
+def order_cancel(request, id: str):
+    """
+    POST /api/orders/<id>/cancel/
+    - Hủy đơn và tự động hoàn lại số lượng tồn.
+    - Nếu đã 'da_huy' thì idempotent (trả lại dữ liệu hiện tại).
+    """
+    oid = _safe_oid(id)
+    if not oid:
+        return JsonResponse({"error": "Invalid id"}, status=400)
+
+    doc = don_hang.find_one({"_id": oid})
+    if not doc:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    # Kiểm tra quyền
+    if not request.is_admin and doc.get("tai_khoan_id") != request.user_oid:
+        return JsonResponse({"error": "Forbidden"}, status=403)
+
+    old_status = (doc.get("trang_thai") or "cho_xu_ly").strip()
+
+    # Nếu đã hủy rồi thì trả về như cũ (idempotent)
+    if old_status == "da_huy":
+        sp_ids = [it.get("san_pham_id") for it in doc.get("items", []) if isinstance(it.get("san_pham_id"), ObjectId)]
+        sp_map = {sp["_id"]: sp for sp in san_pham.find({"_id": {"$in": sp_ids}}, {"ten": 1, "ten_san_pham": 1})}
+        acc = tai_khoan.find_one({"_id": doc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
+        return JsonResponse(_serialize_order(doc, acc=acc, sp_map=sp_map))
+
+    # Hoàn lại tồn kho
+    items = doc.get("items", [])
+    stock_req = [
+        {"san_pham_id": it["san_pham_id"], "so_luong": int(it.get("so_luong", 0))}
+        for it in items if it.get("san_pham_id")
+    ]
+    _rollback_increase_stock(stock_req)
+
+    # Cập nhật trạng thái
+    don_hang.update_one(
+        {"_id": oid},
+        {"$set": {"trang_thai": "da_huy", "ngay_huy": timezone.now()}}
+    )
+
+    # Trả lại JSON đơn đã hủy
+    newdoc = don_hang.find_one({"_id": oid})
+    sp_ids = [it.get("san_pham_id") for it in newdoc.get("items", []) if isinstance(it.get("san_pham_id"), ObjectId)]
+    sp_map = {sp["_id"]: sp for sp in san_pham.find({"_id": {"$in": sp_ids}}, {"ten": 1, "ten_san_pham": 1})}
+    acc = tai_khoan.find_one({"_id": newdoc.get("tai_khoan_id")}, {"ho_ten": 1, "ten": 1, "email": 1})
+    return JsonResponse(_serialize_order(newdoc, acc=acc, sp_map=sp_map), status=200)
