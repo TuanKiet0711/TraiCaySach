@@ -23,7 +23,9 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Số điện thoại</label>
-            <input type="text" name="sdt" class="form-control" placeholder="Nhập số điện thoại">
+            <input id="sdt" type="text" name="sdt" class="form-control"
+                   placeholder="Nhập số điện thoại" maxlength="10"
+                   inputmode="numeric" pattern="[0-9]*">
           </div>
           <div class="mb-3">
             <label class="form-label">Mật khẩu</label>
@@ -45,27 +47,51 @@
 </div>
 
 <script>
+const sdt = document.getElementById('sdt');
+
+// ✅ Chặn nhập chữ và ký tự đặc biệt
+sdt.addEventListener('keydown', e => {
+  const allowed = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'];
+  if (allowed.includes(e.key)) return;
+  if (/^[0-9]$/.test(e.key)) {
+    if (sdt.value.length >= 10) e.preventDefault();
+    return;
+  }
+  e.preventDefault();
+});
+
+// ✅ Chặn dán chữ, chỉ giữ số
+sdt.addEventListener('paste', e => {
+  e.preventDefault();
+  const clip = (e.clipboardData || window.clipboardData).getData('text') || '';
+  const digits = clip.replace(/\D/g, '').slice(0, 10);
+  document.execCommand('insertText', false, digits);
+});
+
 document.getElementById('registerForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const f = e.target;
   const ho_ten=f.ho_ten.value.trim();
   const email=f.email.value.trim();
-  const sdt=f.sdt.value.trim();
+  const sdtVal=f.sdt.value.trim();
   const mat_khau=f.mat_khau.value.trim();
   const mat_khau2=f.mat_khau2.value.trim();
-
   const msg=document.getElementById('registerMsg');
 
-  // kiểm tra khớp mật khẩu
   if(mat_khau !== mat_khau2){
     msg.innerHTML='<div class="alert alert-danger">Mật khẩu nhập lại không khớp</div>';
+    return;
+  }
+
+  if(sdtVal && !/^\d{10}$/.test(sdtVal)){
+    msg.innerHTML='<div class="alert alert-danger">Số điện thoại phải gồm đúng 10 chữ số</div>';
     return;
   }
 
   const res = await fetch('/api/auth/register', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ho_ten,email,sdt,mat_khau})
+    body: JSON.stringify({ho_ten,email,sdt:sdtVal,mat_khau})
   });
 
   if(res.ok){

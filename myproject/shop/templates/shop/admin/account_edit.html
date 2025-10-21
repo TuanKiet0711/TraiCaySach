@@ -8,20 +8,27 @@
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label">Họ tên</label>
-      <input type="text" name="ho_ten" class="form-control" required>
+      <input type="text" name="ho_ten" class="form-control" required placeholder="Nhập họ tên">
     </div>
+
     <div class="mb-3">
       <label class="form-label">Email</label>
-      <input type="email" name="email" class="form-control" required>
+      <input type="email" name="email" class="form-control" required placeholder="Nhập email">
     </div>
+
     <div class="mb-3">
       <label class="form-label">SĐT</label>
-      <input type="text" name="sdt" class="form-control">
+      <input id="sdt" type="text" name="sdt" class="form-control"
+             placeholder="Nhập số điện thoại" maxlength="10"
+             inputmode="numeric" pattern="[0-9]*" autocomplete="tel">
+      <div class="form-text">Chỉ nhận số, tối đa 10 ký tự.</div>
     </div>
+
     <div class="mb-3">
       <label class="form-label">Mật khẩu (để trống nếu không đổi)</label>
-      <input type="text" name="mat_khau" class="form-control">
+      <input type="password" name="mat_khau" class="form-control" placeholder="Nhập mật khẩu mới (nếu đổi)" minlength="6">
     </div>
+
     <div class="mb-3">
       <label class="form-label">Vai trò</label>
       <select name="vai_tro" class="form-select">
@@ -29,45 +36,100 @@
         <option value="admin">Admin</option>
       </select>
     </div>
+
     <button type="submit" class="btn btn-primary">Cập nhật</button>
     <a href="{% url 'shop:admin_accounts' %}" class="btn btn-secondary">Hủy</a>
   </form>
 </div>
 
 <script>
+// ---- Helper: lấy CSRF từ cookie ----
+function getCookie(name){
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return m ? m.pop() : '';
+}
+
+// ---- Chỉ cho nhập số vào ô SĐT ----
+const sdt = document.getElementById('sdt');
+
+// Chặn phím không phải số (vẫn cho phím điều hướng, xóa, tab...)
+sdt.addEventListener('keydown', e => {
+  const allowed = ['Backspace','Delete','Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End'];
+  if (allowed.includes(e.key)) return;
+  // Cho Ctrl/Cmd + A/C/V/X
+  if ((e.ctrlKey || e.metaKey) && ['a','c','v','x'].includes(e.key.toLowerCase())) return;
+
+  if (/^\d$/.test(e.key)) {
+    if (sdt.value.length >= 10) e.preventDefault();
+    return;
+  }
+  e.preventDefault();
+});
+
+// Khi dán: chỉ giữ số & không quá 10 ký tự
+sdt.addEventListener('paste', e => {
+  e.preventDefault();
+  const clip = (e.clipboardData || window.clipboardData).getData('text') || '';
+  const digits = clip.replace(/\D/g, '');
+  const room = 10 - sdt.value.length;
+  document.execCommand('insertText', false, digits.slice(0, Math.max(room,0)));
+});
+
+// Lọc thêm ở input (phòng trường hợp IME)
+sdt.addEventListener('input', () => {
+  sdt.value = sdt.value.replace(/\D/g, '').slice(0,10);
+});
+
+// ---- Load dữ liệu ban đầu ----
 (async ()=>{
-  // load dữ liệu ban đầu
-  const res=await fetch(`/api/accounts/{{ account_id }}/`);
+  const res = await fetch(`/api/accounts/{{ account_id }}/`);
   if(res.ok){
-    const data=await res.json();
-    document.querySelector('[name=ho_ten]').value=data.ho_ten||'';
-    document.querySelector('[name=email]').value=data.email||'';
-    document.querySelector('[name=sdt]').value=data.sdt||'';
-    document.querySelector('[name=vai_tro]').value=data.vai_tro||'customer';
+    const data = await res.json();
+    document.querySelector('[name=ho_ten]').value = data.ho_ten || '';
+    document.querySelector('[name=email]').value  = data.email  || '';
+    document.querySelector('[name=sdt]').value    = (data.sdt||'').replace(/\D/g,'').slice(0,10);
+    document.querySelector('[name=vai_tro]').value= data.vai_tro || 'customer';
   }else{
     alert('Không tải được dữ liệu');
   }
 })();
-document.getElementById('formEditAcc').addEventListener('submit',async(e)=>{
+
+// ---- Submit cập nhật ----
+document.getElementById('formEditAcc').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  const f=e.target;
-  const body={
-    ho_ten:f.ho_ten.value,
-    email:f.email.value,
-    sdt:f.sdt.value,
-    vai_tro:f.vai_tro.value
+  const f = e.target;
+
+  const body = {
+    ho_ten : (f.ho_ten.value || '').trim(),
+    email  : (f.email.value  || '').trim().toLowerCase(),
+    sdt    : (f.sdt.value    || '').trim(),
+    vai_tro: f.vai_tro.value
   };
-  if(f.mat_khau.value.trim())body.mat_khau=f.mat_khau.value.trim();
-  const res=await fetch(`/api/accounts/{{ account_id }}/`,{
-    method:'PUT',
-    headers:{'Content-Type':'application/json','Accept':'application/json'},
-    body:JSON.stringify(body)
+  if (f.mat_khau.value.trim()) body.mat_khau = f.mat_khau.value.trim();
+
+  // Validate SĐT: cho phép rỗng, nếu có thì đúng 10 số
+  if (body.sdt && !/^\d{10}$/.test(body.sdt)) {
+    alert('Số điện thoại phải gồm đúng 10 chữ số.');
+    return;
+  }
+
+  const res = await fetch(`/api/accounts/{{ account_id }}/`,{
+    method : 'PUT',
+    headers: {
+      'Content-Type':'application/json',
+      'Accept':'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify(body),
+    credentials: 'same-origin'
   });
+
   if(res.ok){
-    window.location.href="{% url 'shop:admin_accounts' %}";
+    window.location.href = "{% url 'shop:admin_accounts' %}";
   }else{
-    const data=await res.json();
-    alert(data.error||'Lỗi cập nhật');
+    const data = await res.json().catch(()=> ({}));
+    alert(data.error || 'Lỗi cập nhật');
   }
 });
 </script>
