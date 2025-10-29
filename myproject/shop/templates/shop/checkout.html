@@ -42,7 +42,8 @@
                 <label class="form-label" for="paymentSelect">Phương thức thanh toán</label>
                 <select name="phuong_thuc_thanh_toan" id="paymentSelect" class="form-select">
                   <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
-                  <option value="chuyen_khoan">Chuyển khoản</option>
+                  
+                  <option value="vnpay">VNPay (thẻ/QR)</option>
                 </select>
               </div>
 
@@ -85,10 +86,6 @@
                   </div>
 
                   <hr class="my-3">
-                  <ul class="small mb-0">
-                    <li>Chuyển đúng số tiền <strong>Tổng cộng</strong> hiển thị.</li>
-                    <li>Hệ thống sẽ xác nhận khi nhận được giao dịch và cập nhật trạng thái đơn.</li>
-                  </ul>
                 </div>
               </div>
               <!-- /Hướng dẫn chuyển khoản -->
@@ -102,7 +99,6 @@
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <h5 class="card-title mb-0">Tóm tắt</h5>
-              
             </div>
 
             <div id="cartList" class="small mb-2 text-muted"></div>
@@ -271,8 +267,30 @@
       ? { use_cart:false, ...baseInfo, items:[{ san_pham_id: buyNow.san_pham_id, so_luong: buyNow.so_luong || 1 }] }
       : { use_cart:true,  ...baseInfo };
 
-    const res = await fetch('/api/orders/checkout/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const res = await fetch('/api/orders/checkout/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+
     if(res.ok){
+      const order = await res.json();
+      const method = (baseInfo.phuong_thuc_thanh_toan || '').toLowerCase();
+
+      // VNPay: tạo link & chuyển hướng
+      if (method === 'vnpay') {
+        try{
+          const r2 = await fetch(`/api/pay/vnpay/create/${order.id}/`);
+          const d2 = await r2.json();
+          if (r2.ok && d2.url) { window.location.href = d2.url; return; }
+          toast('Không tạo được link VNPay', true);
+        }catch(e){
+          toast('Lỗi tạo link VNPay', true);
+        }
+        return;
+      }
+
+      // Các phương thức khác
       toast('Đặt hàng thành công!');
       clearBuyNow();
       setTimeout(()=>{ window.location.href = "{% url 'shop:my_orders_page' %}"; }, 800);

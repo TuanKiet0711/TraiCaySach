@@ -180,7 +180,9 @@ def my_order_detail(request, id):
 @require_http_methods(["POST", "DELETE"])
 def api_cancel_my_order(request, id: str):
     """
-    API hủy đơn của khách hàng (chỉ cho phép hủy khi trạng thái chưa hoàn tất)
+    API hủy đơn của KHÁCH HÀNG
+    - Chỉ cho phép hủy khi trạng thái hiện tại là 'cho_xu_ly'
+    - Hoàn tồn kho (ưu tiên từ items; fallback legacy san_pham_id/so_luong)
     """
     user = _cur_user_oid(request)
     if not user:
@@ -191,21 +193,44 @@ def api_cancel_my_order(request, id: str):
     except Exception:
         return JsonResponse({"error": "Mã đơn không hợp lệ"}, status=400)
 
+    # Chỉ hủy đơn thuộc user hiện tại
     doc = don_hang.find_one({"_id": oid, "tai_khoan_id": user})
     if not doc:
         return JsonResponse({"error": "Không tìm thấy đơn hàng"}, status=404)
 
     status = (doc.get("trang_thai") or "cho_xu_ly").strip()
 
-    # Không cho hủy nếu đơn đã hoàn tất hoặc đã hủy
-    if status in ("da_huy", "hoan_thanh"):
-        return JsonResponse({"error": "Đơn đã kết thúc, không thể huỷ"}, status=409)
-    if status == "dang_giao":
-        return JsonResponse({"error": "Đơn đang giao, vui lòng liên hệ hỗ trợ"}, status=409)
+    # ✅ RÀO CHẮN: chỉ cho phép hủy khi đang chờ xử lý
+    if status != "cho_xu_ly":
+        return JsonResponse(
+            {"error": "Chỉ được hủy khi đơn đang ở trạng thái chờ xử lý"},
+            status=409
+        )
 
-    # ✅ Chuẩn hóa về "da_huy" để trùng Mongo Validation & ALLOWED_STATUS
+    # ✅ Chuẩn bị danh sách hoàn tồn
+    stock_req = []
+    items = (doc.get("items") or []) if isinstance(doc.get("items"), list) else []
+    if items:
+        for it in items:
+            sp_id = it.get("san_pham_id")
+            if isinstance(sp_id, ObjectId):
+                stock_req.append({"san_pham_id": sp_id, "so_luong": int(it.get("so_luong", 0))})
+    else:
+        # legacy 1-SP/đơn
+        sp_id = doc.get("san_pham_id")
+        if isinstance(sp_id, ObjectId):
+            stock_req.append({"san_pham_id": sp_id, "so_luong": int(doc.get("so_luong", 0))})
+
+    # ✅ Hoàn tồn kho (nếu có gì để hoàn)
+    for it in stock_req:
+        san_pham.update_one(
+            {"_id": it["san_pham_id"]},
+            {"$inc": {"so_luong_ton": int(it["so_luong"])}}
+        )
+
+    # ✅ Cập nhật trạng thái: filter kèm trạng thái để tránh race condition
     don_hang.update_one(
-        {"_id": oid, "tai_khoan_id": user},
+        {"_id": oid, "tai_khoan_id": user, "trang_thai": "cho_xu_ly"},
         {"$set": {"trang_thai": "da_huy", "ngay_huy": timezone.now()}}
     )
 

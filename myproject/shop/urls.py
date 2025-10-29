@@ -1,5 +1,5 @@
 from django.urls import path
-
+from .views.vnpay_view import vnpay_create_url, vnpay_return, vnpay_ipn
 # ====== SITE (HTML) ======
 from .views import sanpham, home, auth_pages
 from .views.cart_page import cart_page
@@ -108,4 +108,8 @@ path("api/orders/<str:id>/", dhv.order_detail, name="api_order_detail"),      # 
     path("admin-panel/accounts/<str:id>/edit/", av.account_edit, name="admin_account_edit"),
     path("admin-panel/accounts/<str:id>/delete/", av.account_delete, name="admin_account_delete"),
     path("checkout/", checkout_page.checkout_page, name="checkout"),
+
+    path("api/pay/vnpay/create/<str:order_id>/", vnpay_create_url, name="vnpay_create"),
+    path("api/pay/vnpay/return/", vnpay_return, name="vnpay_return"),
+    path("api/pay/vnpay/ipn/",    vnpay_ipn,    name="vnpay_ipn"),
 ]

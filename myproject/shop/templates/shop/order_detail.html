@@ -9,9 +9,9 @@
     <a href="{% url 'shop:my_orders_page' %}" class="btn btn-sm btn-outline-secondary">← Quay lại danh sách</a>
 
     <div class="d-flex gap-2">
-      {% if order.trang_thai == 'cho_xu_ly' or order.trang_thai == 'da_xac_nhan' %}
-      <button id="btn-cancel" class="btn btn-sm btn-danger">Hủy đơn</button>
-      {% endif %}
+      {% if order.trang_thai == 'cho_xu_ly' %}
+  <button id="btn-cancel" class="btn btn-sm btn-danger">Hủy đơn</button>
+{% endif %}
     </div>
   </div>
 
