@@ -17,7 +17,7 @@ from ..database import don_hang, san_pham, tai_khoan
 PAGE_SIZE_DEFAULT = 10
 PAGE_SIZE_MAX = 100
 ALLOWED_STATUS = {"cho_xu_ly", "da_xac_nhan", "dang_giao", "hoan_thanh", "da_huy"}
-ALLOWED_PAY = {"cod", "chuyen_khoan"}
+ALLOWED_PAY = {"cod", "chuyen_khoan", "vnpay"}
 ALWAYS_ADD_LEGACY_FIELDS = True
 
 
@@ -264,15 +264,23 @@ def _try_decrease_stock(items: list[dict]) -> tuple[bool, str]:
     for it in items:
         sp_id = it["san_pham_id"]
         qty = int(it["so_luong"])
+
+        # Cố gắng trừ tồn
         r = san_pham.update_one(
             {"_id": sp_id, "so_luong_ton": {"$gte": qty}},
             {"$inc": {"so_luong_ton": -qty}}
         )
         if r.matched_count == 0:
+            # Lấy tên & tồn hiện tại để đưa vào message
+            sp_doc = san_pham.find_one({"_id": sp_id}, {"ten": 1, "ten_san_pham": 1, "so_luong_ton": 1})
+            ten = _product_label(sp_doc) or str(sp_id)
+            ton = int(sp_doc.get("so_luong_ton", 0)) if sp_doc else 0
+
             # rollback phần đã trừ
             for sp_rolled, qty_rolled in decremented:
                 san_pham.update_one({"_id": sp_rolled}, {"$inc": {"so_luong_ton": qty_rolled}})
-            return (False, f"Sản phẩm {str(sp_id)} không đủ tồn kho")
+
+            return (False, f"Sản phẩm \"{ten}\" không đủ tồn kho (còn {ton}, cần {qty}).")
         decremented.append((sp_id, qty))
     return (True, "")
 
@@ -631,7 +639,6 @@ def order_detail(request, id: str):
             update["tai_khoan_id"] = tk_new
 
         # Cập nhật items: tính lại tổng & KHÔNG tự động can thiệp tồn ở đây
-        # (nếu bạn muốn khi đổi items thì cũng trừ/hoàn tồn phần chênh lệch, ta có thể bổ sung sau)
         items_in = body.get("items", None)
         tong_tien = None
         sp_ids = []
@@ -719,21 +726,6 @@ def orders_checkout(request):
     Hỗ trợ 2 chế độ:
       1) use_cart = true  -> lấy items từ giỏ của user
       2) use_cart = false -> lấy items từ payload (mua ngay)
-
-    Body mẫu (giỏ):
-    {
-      "use_cart": true,
-      "phuong_thuc_thanh_toan": "cod",
-      "ho_ten": "...", "sdt": "...", "dia_chi": "...", "ghi_chu": "..."
-    }
-
-    Body mẫu (mua ngay):
-    {
-      "use_cart": false,
-      "items": [{"san_pham_id": "<id>", "so_luong": 1}],
-      "phuong_thuc_thanh_toan": "cod",
-      "ho_ten": "...", "sdt": "...", "dia_chi": "...", "ghi_chu": "..."
-    }
     """
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -830,7 +822,7 @@ def orders_checkout(request):
         "nguon_dat": "cart" if use_cart else "buy_now",
     }
 
-    # Thông tin người nhận từ payload (họ_tên/sdt/địa_chỉ/ghi_chú…)
+    # Thông tin người nhận
     receiver = _extract_receiver_from_payload(data)
     _apply_receiver_aliases(doc, receiver)
 
@@ -859,6 +851,8 @@ def orders_checkout(request):
     acc = tai_khoan.find_one({"_id": user_oid}, {"ho_ten": 1, "ten": 1, "email": 1})
     sp_map = {sp["_id"]: sp for sp in san_pham.find({"_id": {"$in": sp_ids}}, {"ten": 1, "ten_san_pham": 1})}
     return JsonResponse(_serialize_order(created, acc=acc, sp_map=sp_map), status=201)
+
+
 # =================== CANCEL (HỦY ĐƠN + HOÀN TỒN) ===================
 @csrf_exempt
 @require_login_api
