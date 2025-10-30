@@ -94,7 +94,7 @@
                     <a href="{% url 'shop:order_detail' o.id %}" class="btn btn-sm btn-outline-primary">
                       <i class="bi bi-eye"></i> Chi tiết
                     </a>
-                    {% if o.trang_thai == 'cho_xu_ly' or o.trang_thai == 'da_xac_nhan' %}
+                    {% if o.trang_thai == 'cho_xu_ly'  %}
                       <button data-id="{{ o.id }}" class="btn btn-sm btn-outline-danger btn-cancel-order">
                         <i class="bi bi-x-circle"></i> Hủy
                       </button>
